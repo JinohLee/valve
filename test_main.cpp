@@ -17,51 +17,13 @@ using namespace arma;
 #include <boost/assign.hpp>
 
 #include <thread_util.h>
-#include <Boards_ctrl_basic.h>
+#include "Boards_ctrl_basic.h"
 #ifdef USE_ZMQ
     #include <zmq_publisher.h>
     zmq::context_t zmq_global_ctx(1);
 #endif
 
-static int loop = 1;
-/////////////////////////optimization and Matrix libraries////////
-/*#include "optimization.h"
-using namespace alglib;
-
-#define WANT_STREAM                  // include.h will get stream fns
-#define WANT_MATH                    // include.h will get math fns
-                                     // newmatap.h will get include.h
-#include "newmatap.h"                // need matrix applications
-#include "newmatio.h"                // need matrix output routines
-
-#ifdef use_namespace
-using namespace NEWMAT;              // access NEWMAT namespace
-#endif
-
-Matrix jacob_right(6, 8);
-Matrix jacob_left(6, 8);
-Matrix jacob_R(6, 16);
-IdentityMatrix I(3);*/
-
-/////////////START: optimization //////////
-/*void function1_grad(const real_1d_array &x, double &func, real_1d_array &grad, void *ptr)
-{
-    func = 100*pow(x[0]+3,4) + pow(x[1]-3,4);
-    grad[0] = 400*pow(x[0]+3,3);
-    grad[1] = 4*pow(x[1]-3,3);
-}
-
-real_1d_array x = "[5,5]";
-real_2d_array c = "[[1,0,2],[1,1,6]]";
-integer_1d_array ct = "[1,1]";
-minbleicstate state;
-minbleicreport rep;
-
-double epsg = 0.000001;
-double epsf = 0;
-double epsx = 0;
-ae_int_t maxits = 0;*/
-/////////////END:  optimization //////////
+static int loop = 1;  //Loop counter
 
 ////////////////////////////////////////////////////
 // Static functions
@@ -108,12 +70,6 @@ int main(int argc, char *argv[])
 
 
 try {
-
-   /* minbleiccreate(x, state);
-    minbleicsetlc(state, c, ct);
-    minbleicsetcond(state, epsg, epsf, epsx, maxits);
-    alglib::minbleicoptimize(state, function1_grad);
-    minbleicresults(state, x, rep);*/
 
     ////////NORMAL ROBOLI CODE STARTS FROM HERE//////
     std::map<std::string, Thread_hook*> threads;
