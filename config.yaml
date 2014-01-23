@@ -1,0 +1,43 @@
+#
+
+board_ctrl:
+  eth_iface: eth0
+  boards_num: 27
+
+# assume boards of same type have the same policy bc_rate !!!
+# policy and extra_policy are defined in broadcast_data.h !!!
+
+mc_board:
+  # this will raise a warning
+  policy: 0xFFFF
+  bc_rate: 2
+
+ft_board:
+  # this will raise a warning
+  policy: 0xFFFF
+  bc_rate: 10
+  calibrate_offset: true
+
+# specific board config
+
+board_y:
+  current_lim_mA : 12345
+
+
+board_x:
+
+  pid :
+    position: [50000,2000,50]
+    velocity: [2000,0,500]
+    torque:   [445,22,0]
+
+  current_lim_mA : 7654
+  max_torque_mNm : 23456
+  impedance_control : 1
+  motor_config_mask : 0x0
+  motor_config2_mask : 0x0
+  filter_samples : 1
+
+
+
+
