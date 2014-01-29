@@ -5,8 +5,8 @@ project(coman_basic_example)
 ################################################################
 cmake_minimum_required(VERSION 2.8)
 
-set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
 
+set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
@@ -33,24 +33,18 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ##################################################################
 #    Project files.  Adjust to fit your project.                 #
 ##################################################################
-#include_directories("/home/arash/armadillo/armadillo-3.930.2/my_usr_dir/usr/include")
-#link_directories("/home/arash/armadillo/armadillo-3.930.2/my_usr_dir/usr/lib")
-
+#---CoMan_Shared
 include_directories("${COMAN_ROOT}/include")
 link_directories("${COMAN_ROOT}/lib")
-
-#include_directories("/home/coman/AJ/COMAN_shared/usr/include")
-#link_directories("/home/coman/AJ/COMAN_shared/usr/lib")
-
-include_directories("/home/coman/jinoh/COMAN_shared/usr/include")
-link_directories("/home/coman/jinoh/COMAN_shared/usr/lib")
-
-
-#link_directories("/usr/lib/atlas-base/atlas")
-#link_directories("/usr/lib/atlas-base/")
-link_directories("/usr/lib/libblas/")
-link_directories("/usr/lib/lapack/")
-
+#---Armadillo
+include_directories("/usr/include")
+link_directories("/usr/lib")
+#---Open-blas
+link_directories("/usr/lib/")
+#link_directories("/usr/lib/libblas/")
+#---Lapack
+link_directories("/usr/lib/")
+#link_directories("/usr/lib/lapack/")
 
 add_definitions(" -std=c++0x -Duse_namespace")
 

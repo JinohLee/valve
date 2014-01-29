@@ -51,7 +51,7 @@ ManipulationVars::ManipulationVars() :
         Xi_R(6), Xi_L(6),
         dXd_D(6), Xd_D(6),
         Xd_R(6), Xd_L(6),
-        dXd_R(6), dXd_L(6),
+        dXd_R(6), dXd_L(6), Qr(4), Ql(4),
         Xd_D_init(6) {
 
         K_inv   = 0.001;     //Tuned (0.02* 0.05)
@@ -279,8 +279,9 @@ void ManipulationVars::manip_kine()
         pinv_Jhat_2=pinv(Jhat_2);
      else
         pinv_Jhat_2=Jhat_2.t() * inv(Jhat_2*Jhat_2.t() + 0.001*I_6);
-     //   END: PRIRORITY KINEMATICS
+     //END: PRIRORITY KINEMATICS
 
+<<<<<<< HEAD
 
      //postion two hands
      X_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
@@ -294,11 +295,26 @@ void ManipulationVars::manip_kine()
      //relative pos/ori
      X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
 
+=======
+     ////////// JINOH EDIT
+      //postion two hands
+      X_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
+      X_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+
+      //orientation for two hands (Quaternion)
+      //vec Qr(4), Ql(4): declared as global
+      RotQuaternion(fkin_or_right, Qr);
+      RotQuaternion(fkin_or_left, Ql);
+
+      //relative pos/ori
+      X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
+
+      ///////// EDIT END
 
 }
 
 void ManipulationVars::reaching(u_int64_t dt_ns){
-
 
     vec Xf_R(6), Xf_L(6);
     Xf_R.zeros(); Xf_L.zeros();
@@ -312,6 +328,7 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         Xd_L = Xi_L;
 
         Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+<<<<<<< HEAD
 
     }
 
@@ -404,6 +421,8 @@ void ManipulationVars::pushing(u_int64_t dt_ns){
 
         Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
 
+=======
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
     }
 
         //Get valve position/orientation
@@ -411,28 +430,35 @@ void ManipulationVars::pushing(u_int64_t dt_ns){
         //vec Xv = get_valve_data();
         vec Xv(6);
         Xv<<0.25<<0.0<<-0.0<<0.0<<0.0<<0.0;
+        mat ROTv(3,3);
+        vec Qv(4);
+        //Z-Y-X Euler angle (alpha-beta-gamma)
+        ROTv<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
+            << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
+            << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
+        RotQuaternion(ROTv, Qv);
 
         //Get valve radius
         //double Rv = get_radius();
         double Rv=0.1;
 
-        //Calculate target position/orientations for two hands
+        //Calculate target position for two hands
         vec Xt_R(6), Xt_L(6);
         double Roff = 0.05;     //offset, 5cm
         Xt_R=Xv;    Xt_R(1)=Xv(1) - Rv-Roff;
         Xt_L=Xv;    Xt_L(1)=Xv(1) + Rv+Roff;
 
         //displacement: target - init
-        //TEST:
-        //Xf_R<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
-        //Xf_L<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+                //Xf_R<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+                //Xf_L<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
         Xf_R = Xt_R - Xi_R;
         Xf_L = Xt_L - Xi_L;
 
-       //Arms Trajectory
+       //Hand position Trajectory
         line_traj( Xi_R, Xf_R , 10.0, (dt_ns/1e9), Xd_R, dXd_R);
         line_traj( Xi_L, Xf_L , 10.0, (dt_ns/1e9), Xd_L, dXd_L);
 
+<<<<<<< HEAD
 
 
          //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
@@ -456,6 +482,41 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
         Xd_L = Xi_L;
 
         Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+=======
+        //Quaternion Trajectory
+        vec Xfq_R(4), Xfq_L(4);
+        vec dQd_r(4), dQd_l(4); //dummy
+
+            //GLOBAL: Qi_r, Qi_l, Qd_r, Qd_l
+            vec Qi_r, Qi_l, Qd_r, Qd_l;
+
+        Xfq_R = Qr - Qi_r;
+        Xfq_L = Ql - Qi_l;
+
+        line_traj(Qi_r, Xfq_R, 5.0, (dt_ns/1e9), Qd_r, dQd_r);
+        line_traj(Qi_l, Xfq_L, 5.0, (dt_ns/1e9), Qd_l, dQd_l);
+
+        //Orientation Error
+        vec Eo_r(3), Eo_l(3);
+        OrientationError(Qd_r, Qr, Eo_r);
+        OrientationError(Qd_l, Ql, Eo_l);
+
+        //IK solution: CLICK
+        vec V_R(6), V_L(6);
+
+        V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+        V_R.subvec(3,5) = 10.0*K_clik*Eo_r;
+
+        V_L.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+        V_L.subvec(3,5) = 10.0*K_clik*Eo_l;
+
+        //Right arm
+        delta_q.rows(0,7)= K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        delta_q.rows(8,15)= K_inv* pinv_jacob_left*V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
+       //delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+       //delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
 
     }
 
@@ -597,6 +658,42 @@ bool ManipulationVars::testsafety(){
 return safety_flag;
 }
 
+<<<<<<< HEAD
+=======
+// ************************************************************************
+static const std::vector<float> homeVel(25,25);
+
+/*static const std::vector<float> homePos = {
+    // lower body #15
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+//  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
+    // upper body #10
+    0, 87,  0, -3,  0,-87,  0, -3,  0,  0};
+// 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 */
+
+static const std::vector<float> homePos = {
+    // lower body #15
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+//  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
+    // upper body #10
+    0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
+// 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+
+// boards ID
+std::vector<int> r_leg = {  4,  6,  7,  8,  9, 10};
+std::vector<int> l_leg = {  5, 11, 12, 13, 14, 15};
+std::vector<int> waist = {  1,  2, 3};
+std::vector<int> r_arm = { 16, 17, 18 ,19};
+std::vector<int> l_arm = { 20, 21, 22, 23};
+std::vector<int> neck  = {}; //{ 24, 25};
+
+std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
+                             20, 21, 22, 23, 29, 30, 31, 33};
+
+std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
+                                     20, 21, 22, 23, 29, 30, 31};
+
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
 Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(config) {
 
     name = "boards_ctrl_basic";
@@ -624,7 +721,7 @@ Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(confi
 Boards_ctrl_basic::~Boards_ctrl_basic() {
 
     //Save Cartesian data
-    std::string filename = str(boost::format("/home/coman/AJ/COMAN_shared/examples/Arash_arma/Expdata/user_log_Cart.txt") );
+    std::string filename = str(boost::format("./Expdata/user_log_Cart.txt") );
     std::ofstream log_file(filename.c_str());
 
     for (boost::circular_buffer<log_user_t>::iterator it=log_user_buff_Cart.begin(); it!=log_user_buff_Cart.end(); it++) {
@@ -697,7 +794,11 @@ void Boards_ctrl_basic::th_init(void *) {
 
 }
 
+<<<<<<< HEAD
 void ManipulationVars::init_manip(vec _q_l)
+=======
+void ManipulationVars::init_manip(vec _q_l,double velocity)
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
 {
 
     q_ref=_q_l;
@@ -810,15 +911,56 @@ void Boards_ctrl_basic::reset()
 
 int Boards_ctrl_basic::user_loop(void) {
 
+<<<<<<< HEAD
 
     manip_kine(); //Calculate kinematics
 
     hand_pos hand_delta_q; //Grasping/Openning requirements
     hand_delta_q.l=0;
     hand_delta_q.r=0;
+=======
+    manip_kine();
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
 
-    if (count_loop_1==500)
+
+    //===Quaternion Test
+    mat Rfkin;
+   /* Rfkin << -1.0 << 0.0 << 0.0 <<endr
+          << -0.0 <<-0.7071 << -0.7071 <<endr
+          << -0.0 <<-0.7071 << 0.7071 <<endr;
+*/
+    Rfkin  << cos(M_PI/3) << -sin(M_PI/3) << 0.0 <<endr
+        << sin(M_PI/3) <<  cos(M_PI/3) << 0.0 <<endr
+        << 0.0  << 0.0 << 1.0 <<endr;
+
+    mat R, Rd;
+    Rd  << cos(M_PI) << -sin(M_PI) << 0.0 <<endr
+        << sin(M_PI) <<  cos(M_PI) << 0.0 <<endr
+        << 0.0  << 0.0 << 1.0 <<endr;
+
+    double valve_ang = -M_PI/4.0;
+
+    R   << 1.0 << 0.0 << 0.0 <<endr
+        << 0.0 << cos(valve_ang) << -sin(valve_ang) <<endr
+        << 0.0 << sin(valve_ang) << cos(valve_ang) <<endr;
+    Rd = Rd*R;
+
+    vec Qd(4), Qe(4);
+    //Desired orientation
+    RotQuaternion(Rd, Qd);
+    //Current orientation
+    RotQuaternion(Rfkin, Qe);
+    //Orientation error
+
+    vec Orien_Err(3);
+    OrientationError(Qd, Qe, Orien_Err);
+
+    //===End of Quaternion test
+
+
+    if (count_loop_1==1000)
     {
+<<<<<<< HEAD
         (Eo_r.t()).print("Eo_r=");
         (Eo_l.t()).print("Eo_l=");
         cout<<endl;
@@ -834,12 +976,26 @@ int Boards_ctrl_basic::user_loop(void) {
         //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t() - q_l.t()))).print();
         //(round((180/M_PI)*((q_l.t())))).print("q_l");
         //
+=======
+        Rd.print("Rd=");
+        //R.print("Rot=");
+        Rfkin.print("Rfkin=");
+        (Qr.t()).print("Qd=");
+        (Ql.t()).print("Qe=");
+        (Orien_Err.t()).print("OErr=");
+        cout<<endl;
+        //cout <<"time"<<endl;
+
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
         count_loop_1=0;
     }
     ++count_loop_1;
 
 
+<<<<<<< HEAD
     //Trajectrory--- let the robot move------------------------------//
+=======
+>>>>>>> 8a547e66fdd3fe34b7f2390e112cf2f4c358a281
         if ( trj_flag == 1 ) {
 
 
