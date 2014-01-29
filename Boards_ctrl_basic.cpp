@@ -1,44 +1,42 @@
-/*
-   Boards_ctrl_basic.cpp
-
-   Copyright (C) 2012 Italian Institute of Technology
-
-   Developer:
-       Alessio Margan (2013-, alessio.margan@iit.it)
-
-*/
-
-/**
- *
- * @author Alessio Margan (2013-, alessio.margan@iit.it)
-*/
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-
-
 #include <Boards_ctrl_basic.h>
 #include <Boards_exception.h>
-
 #include <boost/tokenizer.hpp>
-//#include <boost/numeric/ublas/mat.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <boost/format.hpp>
+
 using namespace boost::numeric::ublas;
-
 using namespace arma;
-
 
 // **************************EXTRA INCLUDES************************************
 //#include "calc_jacob.h"
 #include "mySkew.h"
-#include "Traj_gen.h" //trajectory generation
+#include "Traj_gen.h"        //trajectory generation
+#include "orientation_ctrl.h"       //Basic computation for Orientaiton control
+
 // **************************EXTRA INCLUDES************************************
 
-
 // *************************ALL GLOBAL VARIABLES*******************************
+static const std::vector<float> homeVel(25,25);
+
+static const std::vector<float> homePos = {
+    // lower body #15
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+//  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
+    // upper body #10
+    0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
+// 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+
+std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
+                             20, 21, 22, 23, 29, 30, 31, 33};
+
+std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
+                                     20, 21, 22, 23, 29, 30, 31};
+
 //For kinematics
 ManipulationVars::ManipulationVars() :
         jacob_right(6, 8), jacob_left(6, 8), jacob_R(6, 16), jacob_R_1(3,16), jacob_R_2(3,16), zeros6b8(6,8),
@@ -49,6 +47,7 @@ ManipulationVars::ManipulationVars() :
         J_p_L(3,8), J_p_R(3,8), J_o_L(3,8), J_o_R(3,8),
         Theta_0_R(8), Theta_0_L(8), q_l(16), q_dot(16), tau(14), C_vel(6), q_ref(16), q_h(16), delta_q(16), delta_q_sum(16), null_vel(16), obj_r_T(3), obj_w_T(3),
         lambda_dot_jntlmt_r(8),lambda_dot_jntlmt_l(8), lambda_dot_jntlmt(16), q_max_r(8), q_min_r(8), q_bar_r(8), q_max_l(8), q_min_l(8), q_bar_l(8),
+        Qr(4), Ql(4), Qi_r(4), Qi_l(4), Qd_r(4), Qd_l(4), Eo_r(3), Eo_l(3),
         Xi_R(6), Xi_L(6),
         dXd_D(6), Xd_D(6),
         Xd_R(6), Xd_L(6),
@@ -283,12 +282,18 @@ void ManipulationVars::manip_kine()
      //   END: PRIRORITY KINEMATICS
 
 
-      //postion/orientation for two hands
-      X_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
-      X_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+     //postion two hands
+     X_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
+     X_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
 
-      //relative pos/ori
-      X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+     //orientation for two hands (Quaternion)
+     //vec Qr(4), Ql(4): declared as global
+     RotQuaternion(fkin_or_right, Qr);
+     RotQuaternion(fkin_or_left, Ql);
+
+     //relative pos/ori
+     X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+
 
 }
 
@@ -308,6 +313,96 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
 
         Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
 
+    }
+
+        //Get valve position/orientation
+        //vec Xv(6);
+        //vec Xv = get_valve_data();
+        vec Xv(6);
+        Xv<<0.25<<0.0<<-0.0<<M_PI<<0.0<<0.0;
+        mat ROTv(3,3);
+        vec Qv(4);
+        //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
+        ROTv<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
+            << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
+            << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
+        //Quaternion for valve orientation
+        RotQuaternion(ROTv, Qv);
+
+        //Get valve radius
+        //double Rv = get_radius();
+        double Rv=0.1;
+
+        //Calculate target position for two hands
+        vec Xt_R(6), Xt_L(6);
+        double Roff = 0.05;     //offset, 5cm
+        Xt_R=Xv;    Xt_R(1)=Xv(1) - Rv-Roff;
+        Xt_L=Xv;    Xt_L(1)=Xv(1) + Rv+Roff;  
+
+
+        //displacement: target - init
+        //TEST:
+        //Xf_R<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+        //Xf_L<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+        Xf_R = Xt_R - Xi_R;
+        Xf_L = Xt_L - Xi_L;
+
+       //Arms Trajectory
+        line_traj( Xi_R, Xf_R , 10.0, (dt_ns/1e9), Xd_R, dXd_R);
+        line_traj( Xi_L, Xf_L , 10.0, (dt_ns/1e9), Xd_L, dXd_L);
+
+
+        //Quaternion Trajectory
+        vec Xfq_R(4), Xfq_L(4);
+        vec dQd_r(4), dQd_l(4); //dummy
+
+        Xfq_R = Qv - Qi_r;
+        Xfq_L = Qv - Qi_l;
+
+        line_traj(Qi_r, Xfq_R, 5.0, (dt_ns/1e9), Qd_r, dQd_r);
+        line_traj(Qi_l, Xfq_L, 5.0, (dt_ns/1e9), Qd_l, dQd_l);
+
+        //Orientation Error
+        //vec Eo_r(3), Eo_l(3);
+        OrientationError(Qd_r, Qr, Eo_r);
+        OrientationError(Qd_l, Ql, Eo_l);
+
+        //IK solution: CLICK
+        vec V_R(6), V_L(6);
+
+        V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+        V_R.subvec(3,5) = 10.0*K_clik*Eo_r;
+
+        V_L.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+        V_L.subvec(3,5) = 10.0*K_clik*Eo_l;
+
+        delta_q.rows(0,7)= K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        delta_q.rows(8,15)= K_inv* pinv_jacob_left*V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
+         //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
+         //delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+
+         //if(norm((Xd_L - X_L),"fro") > 0.01)//Left arm (TODO)
+         //delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
+
+
+
+}
+
+void ManipulationVars::pushing(u_int64_t dt_ns){
+/*
+    vec Xf_R(6), Xf_L(6);
+    Xf_R.zeros(); Xf_L.zeros();
+
+    if(flag_init_hands == false){
+        Xi_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
+        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        flag_init_hands = true;
+        Xd_R = Xi_R;
+        Xd_L = Xi_L;
+
+        Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
 
     }
 
@@ -338,12 +433,67 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         line_traj( Xi_R, Xf_R , 10.0, (dt_ns/1e9), Xd_R, dXd_R);
         line_traj( Xi_L, Xf_L , 10.0, (dt_ns/1e9), Xd_L, dXd_L);
 
-         //Right arm
+
+
+         //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
          delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
 
-         //Left arm
+         //if(norm((Xd_L - X_L),"fro") > 0.01)//Left arm (TODO)
          delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+*/
+}
 
+void ManipulationVars::movingfar(u_int64_t dt_ns){
+/*
+    vec Xf_R(6), Xf_L(6);
+    Xf_R.zeros(); Xf_L.zeros();
+
+    if(flag_init_hands == false){
+        Xi_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
+        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        flag_init_hands = true;
+        Xd_R = Xi_R;
+        Xd_L = Xi_L;
+
+        Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+
+    }
+
+        //Get valve position/orientation
+        //vec Xv(6);
+        //vec Xv = get_valve_data();
+        vec Xv(6);
+        Xv<<0.25<<0.0<<-0.0<<0.0<<0.0<<0.0;
+
+        //Get valve radius
+        //double Rv = get_radius();
+        double Rv=0.1;
+
+        //Calculate target position/orientations for two hands
+        vec Xt_R(6), Xt_L(6);
+        double Roff = 0.05;     //offset, 5cm
+        Xt_R=Xv;    Xt_R(1)=Xv(1) - Rv-Roff;
+        Xt_L=Xv;    Xt_L(1)=Xv(1) + Rv+Roff;
+
+        //displacement: target - init
+        //TEST:
+        //Xf_R<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+        //Xf_L<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+        Xf_R = Xt_R - Xi_R;
+        Xf_L = Xt_L - Xi_L;
+
+       //Arms Trajectory
+        line_traj( Xi_R, Xf_R , 10.0, (dt_ns/1e9), Xd_R, dXd_R);
+        line_traj( Xi_L, Xf_L , 10.0, (dt_ns/1e9), Xd_L, dXd_L);
+
+
+
+         //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
+         delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+
+         //if(norm((Xd_L - X_L),"fro") > 0.01)//Left arm (TODO)
+         delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+*/
 }
 
 void ManipulationVars::rotating(u_int64_t dt_ns){
@@ -365,50 +515,48 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
 }
 
 hand_pos ManipulationVars::grasping(){
-    //Hand Control
+
     //right hand
-    if ((q_ref(7) < 1.3) && (hand_flag_control_r==0))
+    if ((q_ref(7) < 1.3))
     {
         q_ref(7) =q_ref(7) + 0.0001;
     }
-    else
-        hand_flag_control_r=1;
-
-
-    if ((q_ref(7) > 0.30)&&(hand_flag_control_r==1))
-    {
-        q_ref(7) =q_ref(7) - 0.0001;
-
-    }
-    else
-        hand_flag_control_r=0;
-
 
     //left hand
-    if ((q_ref(15) < 1.3) && (hand_flag_control_l==0))
+    if ((q_ref(15) < 1.3))
     {
         q_ref(15) =q_ref(15) + 0.0001;
     }
-    else
-        hand_flag_control_l=1;
-
-
-    if ((q_ref(15) > 0.30)&&(hand_flag_control_l==1))
-    {
-        q_ref(15) =q_ref(15) - 0.0001;
-
-    }
-    else
-        hand_flag_control_l=0;
-
-   // _pos[two_arms[7]-1]=100000.0 * q_ref(7);
-   // _pos[two_arms[15]-1]=100000.0 * q_ref(15);
 
     hand_pos temp;
     temp.r=q_ref(7);
     temp.l=q_ref(15);
     return temp;
 }
+
+hand_pos ManipulationVars::openning(){
+
+    //right hand
+    if ((q_ref(7) > 0.30))
+    {
+        q_ref(7) =q_ref(7) - 0.0001;
+
+    }
+
+    //left hand
+    if ((q_ref(15) > 0.30))
+    {
+        q_ref(15) =q_ref(15) - 0.0001;
+
+    }
+
+
+    hand_pos temp;
+    temp.r=q_ref(7);
+    temp.l=q_ref(15);
+    return temp;
+}
+
 const vec &ManipulationVars::get_valve_data(){
     vec temp(6);
     for (unsigned int i=0;i<6;i++)
@@ -423,82 +571,31 @@ double ManipulationVars::get_radius(){
 void ManipulationVars::set_valve_data(vec valve_data){
     this->valve_data=valve_data;
 }
+
 bool ManipulationVars::testsafety(){
 
-        safety_flag=0;
-        /*
-        for (int my_jnt_n =0; my_jnt_n<14; my_jnt_n++)
+    safety_flag=0;
+    vec q_max_all = join_cols(q_max_r,q_max_l);
+    vec q_min_all = join_cols(q_min_r,q_min_l);
+
+    for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
         {
-           if ((_pos[two_arms_nohands[my_jnt_n]-1] - _ts_bc_data[two_arms_nohands[my_jnt_n]-1].raw_bc_data.mc_bc_data.Position)  > 100000.0 * 5 * M_PI/180.0)
+            if (q_l(my_jnt_n) > 0.95 * q_max_all(my_jnt_n))
+                   safety_flag=safety_flag+1;
+
+            if (q_l(my_jnt_n) <0.95 * q_min_all(my_jnt_n))
                    safety_flag=safety_flag+1;
         }
 
-        jntlmt_flag=0;
-           if ((abs(_pos[two_arms[0]-1])  > 100000.0 * 190 * M_PI/180.0)||((abs(_pos[two_arms[0 + 8]-1])  > 100000.0 * 190 * M_PI/180.0))||(abs(_pos[two_arms[0]-1])  < 100000.0 * 100 * M_PI/180.0)||((abs(_pos[two_arms[0 + 8]-1])  > 100000.0 * 100 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
 
-           if ((abs(_pos[two_arms[1]-1])  > 100000.0 * 87 * M_PI/180.0)||((abs(_pos[two_arms[1 + 8]-1])  > 100000.0 * 87 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
+      /* for (int my_jnt_n =0; my_jnt_n<14; my_jnt_n++)
+       {
+          if ((_pos[two_arms_nohands[my_jnt_n]-1] - _ts_bc_data[two_arms_nohands[my_jnt_n]-1].raw_bc_data.mc_bc_data.Position)  > 100000.0 * 5 * M_PI/180.0)
+                  safety_flag=safety_flag+1;
+       }*/
 
-           if ((abs(_pos[two_arms[2]-1])  > 100000.0 * 87 * M_PI/180.0)||((abs(_pos[two_arms[2 + 8]-1])  > 100000.0 * 87 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
-
-           if ((abs(_pos[two_arms[3]-1])  > 100000.0 * 87 * M_PI/180.0)||((abs(_pos[two_arms[3 + 8]-1])  > 100000.0 * 87 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
-
-           if ((abs(_pos[two_arms[4]-1])  > 100000.0 * 85 * M_PI/180.0)||((abs(_pos[two_arms[4 + 8]-1])  > 100000.0 * 85 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
-
-           if ((abs(_pos[two_arms[5]-1])  > 100000.0 * 25 * M_PI/180.0)||((abs(_pos[two_arms[5 + 8]-1])  > 100000.0 * 25 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
-
-           if ((_pos[two_arms[6]-1]  > 100000.0 * 40 * M_PI/180.0)||((_pos[two_arms[6 + 8]-1]  > 100000.0 * 40 * M_PI/180.0)) || (_pos[two_arms[6]-1]  < 100000.0 * -75 * M_PI/180.0)||((_pos[two_arms[6 + 8]-1]  < 100000.0 * -75 * M_PI/180.0)))
-                   jntlmt_flag=jntlmt_flag+1;
-           // Hands
-           if ((_pos[two_arms[7]-1]  > 100000.0 * 1.4)||((_pos[two_arms[7 + 8]-1]  > 100000.0 * 1.4)))
-                   jntlmt_flag=jntlmt_flag+1;
-
-           if ((_pos[two_arms[7]-1]  < 100000.0 * 0.25)||((_pos[two_arms[7 + 8]-1]  < 100000.0 * 0.25)))
-                   jntlmt_flag=jntlmt_flag+1;*/
 return safety_flag;
 }
-
-// ************************************************************************
-static const std::vector<float> homeVel(25,25);
-
-/*static const std::vector<float> homePos = {
-    // lower body #15
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-//  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
-    // upper body #10
-    0, 87,  0, -3,  0,-87,  0, -3,  0,  0};
-// 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 */
-
-static const std::vector<float> homePos = {
-    // lower body #15
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-//  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
-    // upper body #10
-    0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
-// 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-
-// boards ID
-std::vector<int> r_leg = {  4,  6,  7,  8,  9, 10};
-std::vector<int> l_leg = {  5, 11, 12, 13, 14, 15};
-std::vector<int> waist = {  1,  2, 3};
-std::vector<int> r_arm = { 16, 17, 18 ,19};
-std::vector<int> l_arm = { 20, 21, 22, 23};
-std::vector<int> neck  = {}; //{ 24, 25};
-
-std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
-                             20, 21, 22, 23, 29, 30, 31, 33};
-
-std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
-                                     20, 21, 22, 23, 29, 30, 31};
-// *************************ALL GLOBAL VARIABLES*******************************
-
-
-
 
 Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(config) {
 
@@ -578,31 +675,29 @@ Boards_ctrl_basic::~Boards_ctrl_basic() {
     std::cout << "~" << typeid(this).name() << std::endl;
 }
 
-
 void Boards_ctrl_basic::th_init(void *) {
 
-
-
-    // configure dsp and start bc data
-    // NOT start motor controller
     init();
-    // read current position and set as homing
-    homing();
+    homing();// read current position and set as homing
     test();
     trj_flag = 0;
+    reach_flag = 0;
+    push_flag=0;
+    open_hand_flag=0;
     close_hand_flag = 0;
     g_tStart = 0;
     t_traj_start= 0;
-    rotate_valve_flag = 0;
+    valve_rotate_flag = 0;
+    moving_far_flag=0;
 
     //initialize variables
     Xi_R.zeros(); Xi_L.zeros();
     Xd_R.zeros(); Xd_L.zeros(); Xd_D.zeros();
     dXd_R.zeros(); dXd_L.zeros(); dXd_D.zeros();
 
-
 }
-void ManipulationVars::init_manip(vec _q_l,double velocity)
+
+void ManipulationVars::init_manip(vec _q_l)
 {
 
     q_ref=_q_l;
@@ -613,11 +708,9 @@ void ManipulationVars::init_manip(vec _q_l,double velocity)
     C_vel.zeros();
     null_vel.ones();
 
-    C_vel(2)= velocity;// 0.0001;
+    C_vel(2)= 0.0001;
 
-    //flag_run_once = true;
-
-    //cout<<"init_manip"<<endl;
+    flag_run_once = true;
 
 }
 
@@ -630,7 +723,6 @@ void Boards_ctrl_basic::th_loop(void * ) {
 
     static char console_buffer[1024];
     static char user_data[1024];
-    static char tmp_buff[1024];
     try {
 
        sense();
@@ -643,12 +735,10 @@ void Boards_ctrl_basic::th_loop(void * ) {
             if (i<14) tau(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Torque/1000.0);
         }
 
-       //(round(((q_l.t())))).print("q_l");
 
-        if(flag_run_once == false){
-            init_manip(q_l,0.0001);
-            flag_run_once = true;
-        }
+        if(flag_run_once == false)
+            init_manip(q_l);
+
 
         bzero((void*)console_buffer, sizeof(console_buffer));
         user_input(console_buffer, sizeof(console_buffer));
@@ -713,7 +803,6 @@ void Boards_ctrl_basic::th_loop(void * ) {
 
 }
 
-
 void Boards_ctrl_basic::reset()
 {
     g_tStart = -1;
@@ -722,47 +811,65 @@ void Boards_ctrl_basic::reset()
 int Boards_ctrl_basic::user_loop(void) {
 
 
-    manip_kine();
+    manip_kine(); //Calculate kinematics
+
+    hand_pos hand_delta_q; //Grasping/Openning requirements
+    hand_delta_q.l=0;
+    hand_delta_q.r=0;
 
     if (count_loop_1==500)
     {
+        (Eo_r.t()).print("Eo_r=");
+        (Eo_l.t()).print("Eo_l=");
+        cout<<endl;
+        /*Rd.print("Rd=");
+        //R.print("Rot=");
+        Rfkin.print("Rfkin=");
+        (Qd.t()).print("Qd=");
+        (Qe.t()).print("Qe=");
+        (Orien_Err.t()).print("OErr=");
+        cout<<endl;*/
+
         //(round(1000*(obj_r_T.t()))).print();
         //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t() - q_l.t()))).print();
         //(round((180/M_PI)*((q_l.t())))).print("q_l");
-        //cout<<(delta_q_sum(7))<<endl;
-        //cout<<hand_flag_control_r<<" "<<hand_flag_control_l<<" "<<close_hand_flag<<endl;
-        //cout<<delta_q_sum(7)<<" "<<delta_q_sum(15)<<endl;//exclude hand_right
-
-        //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t()))).print("q_b");
-        //(dXd_R.t()).print("dXd_R=");
-        //(dXd_L.t()).print("dXd_L=");
-        //cout << "dt_ns = " << dt_ns/1e9 << "\t"<< "traj_start = " << (double)(dt_ns-t_traj_start)/1000000000.0 << "\n";
-
-        //---------------------------------
+        //
         count_loop_1=0;
     }
     ++count_loop_1;
 
 
-
+    //Trajectrory--- let the robot move------------------------------//
         if ( trj_flag == 1 ) {
-            {
-            u_int64_t dt_ns= 0;
-            if ( g_tStart <= 0 ) {
-                g_tStart = get_time_ns();
-            }
-            dt_ns = get_time_ns() - g_tStart;
+
+
+    //Reaching-------------------------------------------------------//
+        if ( reach_flag == 1 ) {
+
+        u_int64_t dt_ns= 0;
+        if ( g_tStart <= 0 ) {
+            g_tStart = get_time_ns();
+        }
+        dt_ns = get_time_ns() - g_tStart;
             reaching(dt_ns);
-            }
-        hand_pos hand_delta_q;
-        hand_delta_q.l=0;
-        hand_delta_q.r=0;
+
+        }
+    //Reaching--------------------------------------------------------//
 
 
+    //GRASPING  ------------------------------------------------------//
         if ( close_hand_flag == 1 )
             hand_delta_q = grasping();
+    //GRASPING  -----------------------------------------------------//
 
-        if ( rotate_valve_flag == 1 )
+    //OPENNING ------------------------------------------------------//
+        if ( open_hand_flag == 1 )
+            hand_delta_q = openning();
+    //OPENNING ------------------------------------------------------//
+
+
+    //ROTATING-------------------------------------------------------//
+        if ( valve_rotate_flag == 1 )
         {
             u_int64_t dt_ns= 0;
             if ( g_tStart <= 0 ) {
@@ -771,13 +878,36 @@ int Boards_ctrl_basic::user_loop(void) {
             dt_ns = get_time_ns() - g_tStart;
             rotating(dt_ns);
         }
+    //ROTATING---------------------------------------------------------//
 
+    //PUSHING  --------------------------------------------------------//
+        if ( push_flag == 1 )
+        {
+            u_int64_t dt_ns= 0;
+            if ( g_tStart <= 0 ) {
+                g_tStart = get_time_ns();
+            }
+            dt_ns = get_time_ns() - g_tStart;
+                pushing(dt_ns);
+        }
+    //PUSHING ----------------------------------------------------------//
+
+    //MOVING FAR--------------------------------------------------------//
+        if ( moving_far_flag == 1 )
+        { u_int64_t dt_ns= 0;
+            if ( g_tStart <= 0 ) {
+                g_tStart = get_time_ns();
+            }
+            dt_ns = get_time_ns() - g_tStart;
+                movingfar(dt_ns);
+        }
+    //MOVING FAR--------------------------------------------------------//
+
+
+    //CALCULATE JOINT REFERENCES----------------------------------------//
         delta_q_sum = delta_q_sum + delta_q;
         delta_q_sum(7)=hand_delta_q.r;//exclude hand_right
         delta_q_sum(15)=hand_delta_q.l;//exclude hand_left
-
-        cout<<delta_q_sum(7)<<" "<<delta_q_sum(15)<<endl;//exclude hand_right
-
 
         for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
         {
@@ -785,25 +915,21 @@ int Boards_ctrl_basic::user_loop(void) {
         }
         _pos[two_arms[7]-1] = 100000.0 * delta_q_sum(7);
         _pos[two_arms[15]-1] = 100000.0 * delta_q_sum(15);
+    //CALCULATE JOINT REFERENCES---------------------------------------//
 
-        testsafety();//TODO:fix this
+        testsafety();//Safety for joint limits
 
-           safety_flag=0;
-           //jntlmt_flag=0;
-
-           if((safety_flag==0)&(jntlmt_flag==0))
+           if(safety_flag==0)
              {
                    move(MV_POS|MV_VEL|MV_TOR|MV_STF);
              }
          else
             {
                if(safety_flag!=0)
-                  DPRINTF("Very High Joint Velocity Detected--Control Stopped... \n");
-               if(jntlmt_flag!=0)
-                  DPRINTF("Exceeding Joint Limits -- Control Stopped... \n");
+                  DPRINTF("Exceeding Joint Limits/Speed -- Control Stopped... \n");
             }
 
-
+//Trajectrory--- stop the robot movements------------------------//
       }
 
     return 0;
@@ -838,157 +964,56 @@ int Boards_ctrl_basic::user_input(void *buffer, ssize_t buff_size) {
 
     switch ( cmd ) {
         case 'S':
-            /*
-            DPRINTF("Start control ...r_arm\n");
-            start_stop_set_control(r_arm,true);
-            DPRINTF("Start control ...l_leg\n");
-            start_stop_set_control(l_leg,true);*/
             DPRINTF("Start control ...two_arms\n");
             start_stop_set_control(two_arms,true);
             break;
-        case '1':
-            //DPRINTF("Start control single \n");
-            //start_stop_single_control(8,true);
-            DPRINTF("Start control single \n");
-            start_stop_single_control(15,true);
-            break;
-        case '2':
-            DPRINTF("Start control ...l_arm\n");
-            start_stop_set_control(l_arm,true);
-            DPRINTF("Start control ...r_arm\n");
-            start_stop_set_control(r_arm,true);
-            break;
-        case '3':
-            DPRINTF("Start control ...l_leg\n");
-            start_stop_set_control(l_leg,true);
-            DPRINTF("Start control ...r_leg\n");
-            start_stop_set_control(r_leg,true);
-            break;
+
         case 'h':
             DPRINTF("Set home pos\n");
-            homing(homePos, homeVel);
-            //test();
-            break;
-        case 'A':
-            DPRINTF("Set pos ref to median point of range pos\n");
-            for ( auto it = _mcs.begin(); it != _mcs.end(); it++ ) {
-                b = it->second;
-                _pos[b->bId-1] = (b->_max_pos + b->_min_pos) / 2;
-            }
-            move();
-            break;
-        case 'a':
-            DPRINTF("Do something else\n");
-            toggle *= -1;
-            for ( auto it = _mcs.begin(); it != _mcs.end(); it++ ) {
-                b = it->second;
-                _pos[b->bId-1] = _home[b->bId-1] + DEG2mRAD(5) * toggle;
-            }
-            move();
-            break;
-        case '[':
-            DPRINTF("Do something ++++ \n");
-            for ( auto it = _mcs.begin(); it != _mcs.end(); it++ ) {
-                b = it->second;
-                _pos[b->bId-1] = _ts_bc_data[b->bId-1].raw_bc_data.mc_bc_data.Position + DEG2mRAD(0.5);
-            }
-            move();
-            break;
-        case ']':
-            DPRINTF("Do something ----\n");
-            for ( auto it = _mcs.begin(); it != _mcs.end(); it++ ) {
-                b = it->second;
-                _pos[b->bId-1] = _ts_bc_data[b->bId-1].raw_bc_data.mc_bc_data.Position - DEG2mRAD(0.5);
-            }
-            move();
+            homing(homePos, homeVel);        
             break;
 
         case 't':
-
             DPRINTF("trajectory\n");
             homing();
+            reset();
             //g_tStart = get_time_ns();
             trj_flag = ! trj_flag;
             break;
 
-        case 'c':
+        case 'r':
+            DPRINTF("reaching\n");
+            reset();
+            reach_flag = ! reach_flag;
+            break;
 
+        case 'p':
+            DPRINTF("pushing towards the valve\n");
+            reset();
+            push_flag = ! push_flag;
+            break;
+
+        case 'o':
+            DPRINTF("openning the hand\n");
+            open_hand_flag = ! open_hand_flag;
+        break;
+
+        case 'm':
+            DPRINTF("moving far from the valve\n");
+            reset();
+            moving_far_flag = ! moving_far_flag;
+        break;
+
+        case 'c':
             DPRINTF("closing hands\n");
             close_hand_flag = ! close_hand_flag;
             break;
 
-        case 'r':
-
-            DPRINTF("rotating hands\n");
-            rotate_valve_flag = ! rotate_valve_flag;
+        case 'v':
+            DPRINTF("valve rotation\n");
+            reset();
+            valve_rotate_flag = ! valve_rotate_flag;
             break;
-
-        case 'X':
-            pos_group.clear();
-            pos_group[88] = 0x00DEAD00;
-            pos_group[99] = 0x11BEEF11;
-            set_position_group(pos_group);
-            pos_vel_group.clear();
-            pos_vel_group[88] = std::make_pair(0x00DEAD00, 0xCACA);
-            pos_vel_group[99] = std::make_pair(0x11BEEF11, 0x7777);
-            set_position_velocity_group(pos_vel_group);
-            break;
-
-        case 'x':
-            pos[88] = 0x00DEAD00;
-            pos[99] = 0x11BEEF11;
-            set_position_group(bIds,pos,2);
-            vel[88] = 0xCACA;
-            vel[99] = 0x7777;
-            set_position_velocity_group(bIds,pos,vel,2);
-            break;
-
-        case 'j':
-            pos[88] = 0x00DEAD00;
-            pos[99] = 0x11BEEF11;
-            set_gravity_compensation(pos,sizeof(pos));
-            break;
-
-        case 'P':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, 1000, 0, 0);
-            break;
-        case 'p':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, -1000, 0, 0);
-            break;
-        case 'I':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, 0, 1, 0);
-            break;
-        case 'i':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, 0, -1, 0);
-            break;
-        case 'D':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, 0, 0, 50);
-            break;
-        case 'd':
-            _mcs[19]->set_PID_increment(POSITION_GAINS, 0, 0, -50);
-            break;
-
-
-        case 'U':
-            // works !!! need to handle dsp reboot ... exit app 
-            _mcs[1]->setItem(CMD_UPGRADE, 0, 0);
-            break;
-
-
-        case '@':
-            throw(boards_warn(std::string("Hi this is a boards warning")));
-            // ... never break .....
-            //break;
-
-        case '#':
-            throw(boards_error(std::string("Hi this is an boards error")));
-            // ... never break .....
-            //break;
-
-        case '!':
-            throw(std::runtime_error(std::string("Hi this is a not handled except")));
-            // ... never break .....
-            //break;
 
         default:
             DPRINTF("Stop control ...\n");
