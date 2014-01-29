@@ -34,7 +34,8 @@ using namespace arma;
 // **************************EXTRA INCLUDES************************************
 //#include "calc_jacob.h"
 #include "mySkew.h"
-#include "Traj_gen.h" //trajectory generation
+#include "Traj_gen.h"               //trajectory generation
+#include "orientation_ctrl.h"       //Basic computation for Orientaiton control
 // **************************EXTRA INCLUDES************************************
 
 
@@ -409,6 +410,7 @@ hand_pos ManipulationVars::grasping(){
     temp.l=q_ref(15);
     return temp;
 }
+
 const vec &ManipulationVars::get_valve_data(){
     vec temp(6);
     for (unsigned int i=0;i<6;i++)
@@ -423,6 +425,7 @@ double ManipulationVars::get_radius(){
 void ManipulationVars::set_valve_data(vec valve_data){
     this->valve_data=valve_data;
 }
+
 bool ManipulationVars::testsafety(){
 
         safety_flag=0;
@@ -495,10 +498,6 @@ std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
 
 std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
                                      20, 21, 22, 23, 29, 30, 31};
-// *************************ALL GLOBAL VARIABLES*******************************
-
-
-
 
 Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(config) {
 
@@ -527,7 +526,7 @@ Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(confi
 Boards_ctrl_basic::~Boards_ctrl_basic() {
 
     //Save Cartesian data
-    std::string filename = str(boost::format("/home/coman/AJ/COMAN_shared/examples/Arash_arma/Expdata/user_log_Cart.txt") );
+    std::string filename = str(boost::format("./Expdata/user_log_Cart.txt") );
     std::ofstream log_file(filename.c_str());
 
     for (boost::circular_buffer<log_user_t>::iterator it=log_user_buff_Cart.begin(); it!=log_user_buff_Cart.end(); it++) {
@@ -578,7 +577,6 @@ Boards_ctrl_basic::~Boards_ctrl_basic() {
     std::cout << "~" << typeid(this).name() << std::endl;
 }
 
-
 void Boards_ctrl_basic::th_init(void *) {
 
 
@@ -602,6 +600,7 @@ void Boards_ctrl_basic::th_init(void *) {
 
 
 }
+
 void ManipulationVars::init_manip(vec _q_l,double velocity)
 {
 
@@ -713,7 +712,6 @@ void Boards_ctrl_basic::th_loop(void * ) {
 
 }
 
-
 void Boards_ctrl_basic::reset()
 {
     g_tStart = -1;
@@ -721,28 +719,58 @@ void Boards_ctrl_basic::reset()
 
 int Boards_ctrl_basic::user_loop(void) {
 
-
     manip_kine();
 
-    if (count_loop_1==500)
+
+    //===Quaternion Test
+    mat Rfkin;
+   /* Rfkin << -1.0 << 0.0 << 0.0 <<endr
+          << -0.0 <<-0.7071 << -0.7071 <<endr
+          << -0.0 <<-0.7071 << 0.7071 <<endr;
+*/
+    Rfkin  << cos(M_PI/3) << -sin(M_PI/3) << 0.0 <<endr
+        << sin(M_PI/3) <<  cos(M_PI/3) << 0.0 <<endr
+        << 0.0  << 0.0 << 1.0 <<endr;
+
+    mat R, Rd;
+    Rd  << cos(M_PI) << -sin(M_PI) << 0.0 <<endr
+        << sin(M_PI) <<  cos(M_PI) << 0.0 <<endr
+        << 0.0  << 0.0 << 1.0 <<endr;
+
+    double valve_ang = -M_PI/4.0;
+
+    R   << 1.0 << 0.0 << 0.0 <<endr
+        << 0.0 << cos(valve_ang) << -sin(valve_ang) <<endr
+        << 0.0 << sin(valve_ang) << cos(valve_ang) <<endr;
+    Rd = Rd*R;
+
+    vec Qd(4), Qe(4);
+    //Desired orientation
+    RotQuaternion(Rd, Qd);
+    //Current orientation
+    RotQuaternion(Rfkin, Qe);
+    //Orientation error
+
+    vec Orien_Err(3);
+    OrientationError(Qd, Qe, Orien_Err);
+
+    //===End of Quaternion test
+
+
+    if (count_loop_1==1000)
     {
-        //(round(1000*(obj_r_T.t()))).print();
-        //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t() - q_l.t()))).print();
-        //(round((180/M_PI)*((q_l.t())))).print("q_l");
-        //cout<<(delta_q_sum(7))<<endl;
-        //cout<<hand_flag_control_r<<" "<<hand_flag_control_l<<" "<<close_hand_flag<<endl;
-        //cout<<delta_q_sum(7)<<" "<<delta_q_sum(15)<<endl;//exclude hand_right
+        Rd.print("Rd=");
+        //R.print("Rot=");
+        Rfkin.print("Rfkin=");
+        (Qd.t()).print("Qd=");
+        (Qe.t()).print("Qe=");
+        (Orien_Err.t()).print("OErr=");
+        cout<<endl;
+        //cout <<"time"<<endl;
 
-        //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t()))).print("q_b");
-        //(dXd_R.t()).print("dXd_R=");
-        //(dXd_L.t()).print("dXd_L=");
-        //cout << "dt_ns = " << dt_ns/1e9 << "\t"<< "traj_start = " << (double)(dt_ns-t_traj_start)/1000000000.0 << "\n";
-
-        //---------------------------------
         count_loop_1=0;
     }
     ++count_loop_1;
-
 
 
         if ( trj_flag == 1 ) {

@@ -108,9 +108,6 @@ public:
     bool flag_init_hands;
 
 
-
-
-
 };
 
 
