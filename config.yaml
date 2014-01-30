@@ -10,7 +10,7 @@ board_ctrl:
 mc_board:
   # this will raise a warning
   policy: 0xFFFF
-  bc_rate: 10
+  bc_rate: 2
 
 ft_board:
   # this will raise a warning

@@ -1,9 +1,10 @@
-project(coman_basic_example)
+project(jinoh_arash_valve)
 
 ################################################################
 #    Coman project header. Don't touch unless you know how     # 
 ################################################################
 cmake_minimum_required(VERSION 2.8)
+cmake_policy(SET CMP0015 NEW)
 
 # COMAN_ROOT should be set in your bash script, or it can be set from the option
 #set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
@@ -26,8 +27,8 @@ ELSE()
 ENDIF()
  
 #Install into source folder unless user sets something different
-SET(MY_INSTALL_PREFIX ${COMAN_ROOT} CACHE PATH "Prefix prepended to install directories")
-SET(CMAKE_INSTALL_PREFIX "${MY_INSTALL_PREFIX}" CACHE INTERNAL "Prefix prepended to install directories" FORCE)
+#SET(MY_INSTALL_PREFIX ${COMAN_ROOT} CACHE PATH "Prefix prepended to install directories")
+#SET(CMAKE_INSTALL_PREFIX "${MY_INSTALL_PREFIX}" CACHE INTERNAL "Prefix prepended to install directories" FORCE)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -38,6 +39,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ##################################################################
 SET(ARMADILLO_LIB_USER_PATH "external/armadillo/usr/lib" CACHE STRING "folder where armadillo libs are installed")
 SET(ARMADILLO_INCLUDE_USER_PATH "external/armadillo/usr/include" CACHE STRING "folder where armadillo libs are installed")
+
+
 
 include_directories("${COMAN_ROOT}/include")
 link_directories("${COMAN_ROOT}/lib")
@@ -75,7 +78,9 @@ lapack
 blas
 )
 
-add_executable(coman_basic_example ${SOURCES})
-
-target_link_libraries(coman_basic_example ${LIBRARIES})
-install(TARGETS coman_basic_example DESTINATION bin)
+add_executable(jinoh_arash_valve ${SOURCES})
+add_custom_command(TARGET jinoh_arash_valve POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E
+                         copy "${PROJECT_SOURCE_DIR}/config.yaml" config.yaml)
+target_link_libraries(jinoh_arash_valve ${LIBRARIES})
+install(TARGETS jinoh_arash_valve DESTINATION bin)
