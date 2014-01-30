@@ -40,7 +40,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 SET(ARMADILLO_LIB_USER_PATH "external/armadillo/usr/lib" CACHE STRING "folder where armadillo libs are installed")
 SET(ARMADILLO_INCLUDE_USER_PATH "external/armadillo/usr/include" CACHE STRING "folder where armadillo libs are installed")
 
-
+include_directories(include)
 
 include_directories("${COMAN_ROOT}/include")
 link_directories("${COMAN_ROOT}/lib")
@@ -57,9 +57,9 @@ add_definitions(" -std=c++0x -Duse_namespace")
 set(SOURCES
 Boards_ctrl_basic.cpp
 test_main.cpp
-mySkew.cpp
-Traj_gen.cpp
-orientation_ctrl.cpp
+src/mySkew.cpp
+src/Traj_gen.cpp
+src/orientation_ctrl.cpp
 )
 
 
