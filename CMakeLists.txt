@@ -5,8 +5,8 @@ project(coman_basic_example)
 ################################################################
 cmake_minimum_required(VERSION 2.8)
 
-set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
-
+# COMAN_ROOT should be set in your bash script, or it can be set from the option
+#set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
@@ -15,8 +15,11 @@ IF(NOT CMAKE_BUILD_TYPE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
 IF("$ENV{COMAN_ROOT}" STREQUAL "")
-  message(FATAL_ERROR "!!! No COMAN_ROOT environment variable. !!!\n"
-          "Try: >export COMAN_ROOT=/location/of/coman/libraries\n" $ENV{COMAN_ROOT})
+  message(WARNING "!!! No COMAN_ROOT environment variable. !!!\n"
+          "Try: >export COMAN_ROOT=/location/of/coman/libraries\n"
+          "Otherwise, run ccmake to set manually the COMAN_ROOT variable")
+	SET(COMAN_ROOT "/home/coman/COMAN_shared" CACHE STRING "folder where robolli is locate, e.g. /home/coman/COMAN_shared")
+
 ELSE()
   message("Install root is: " $ENV{COMAN_ROOT})
   set(COMAN_ROOT $ENV{COMAN_ROOT}) 
@@ -33,21 +36,15 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ##################################################################
 #    Project files.  Adjust to fit your project.                 #
 ##################################################################
-#include_directories("/home/arash/armadillo/armadillo-3.930.2/my_usr_dir/usr/include")
-#link_directories("/home/arash/armadillo/armadillo-3.930.2/my_usr_dir/usr/lib")
+SET(ARMADILLO_LIB_USER_PATH "external/armadillo/usr/lib" CACHE STRING "folder where armadillo libs are installed")
+SET(ARMADILLO_INCLUDE_USER_PATH "external/armadillo/usr/include" CACHE STRING "folder where armadillo libs are installed")
 
 include_directories("${COMAN_ROOT}/include")
 link_directories("${COMAN_ROOT}/lib")
 
-#include_directories("/home/coman/AJ/COMAN_shared/usr/include")
-#link_directories("/home/coman/AJ/COMAN_shared/usr/lib")
+include_directories(${ARMADILLO_INCLUDE_USER_PATH})
+link_directories(${ARMADILLO_LIB_USER_PATH})
 
-include_directories("/home/coman/jinoh/COMAN_shared/usr/include")
-link_directories("/home/coman/jinoh/COMAN_shared/usr/lib")
-
-
-#link_directories("/usr/lib/atlas-base/atlas")
-#link_directories("/usr/lib/atlas-base/")
 link_directories("/usr/lib/libblas/")
 link_directories("/usr/lib/lapack/")
 
