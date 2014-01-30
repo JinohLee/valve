@@ -69,10 +69,13 @@ public:
     ManipulationVars();
     void manip_kine();
     void reaching(u_int64_t dt_ns);
+    void pushing(u_int64_t dt_ns);
+    void movingfar(u_int64_t dt_ns);
     hand_pos grasping();
+    hand_pos openning();
     bool testsafety();
     void rotating(u_int64_t dt_ns);
-    void init_manip(vec _q_l,double velocity);
+    void init_manip(vec _q_l);
 
     const vec& get_valve_data();
     inline double get_radius();
@@ -86,6 +89,8 @@ public:
     mat pinv_jacob_right, pinv_jacob_left, pinv_jacob_R, Js_1, Js_2, pinv_Js_1, Jhat_2, pinv_Jhat_2;
     vec Theta_0_R, Theta_0_L, q_l, q_dot, tau, C_vel, q_ref, q_h, delta_q, delta_q_sum, null_vel, obj_r_T, obj_w_T;
     vec lambda_dot_jntlmt_r,lambda_dot_jntlmt_l, lambda_dot_jntlmt, q_max_r, q_min_r, q_bar_r, q_max_l, q_min_l, q_bar_l;
+    vec Qr, Ql, Qi_r, Qi_l, Qd_r, Qd_l;
+    vec Eo_r, Eo_l;
     double K_inv;     //Tuned (0.02* 0.05)
     double K_clik;       //Tuned
     double K_null;     //not tuned
@@ -127,10 +132,14 @@ class Boards_ctrl_basic : public ManipulationVars, public Thread_hook, public Bo
 
 private:
 
-    uint64_t g_tStart;
+    int64_t g_tStart;
     uint8_t trj_flag;
+    uint8_t reach_flag;
+    uint8_t push_flag;
+    uint8_t open_hand_flag;
+    uint8_t moving_far_flag;
     //uint8_t close_hand_flag;
-    uint8_t rotate_valve_flag;
+    uint8_t valve_rotate_flag;
 
     uint64_t t_traj_start;
 

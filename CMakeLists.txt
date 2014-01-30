@@ -5,7 +5,6 @@ project(coman_basic_example)
 ################################################################
 cmake_minimum_required(VERSION 2.8)
 
-#set (ENV{COMAN_ROOT} "/usr/local/src/COMAN_shared")
 set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
 
 
@@ -60,6 +59,7 @@ Boards_ctrl_basic.cpp
 test_main.cpp
 mySkew.cpp
 Traj_gen.cpp
+orientation_ctrl.cpp
 )
 
 
