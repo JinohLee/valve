@@ -4,8 +4,8 @@
 //                          jinoh.lee@iit.it
 //////////////////////////////////////////////////
 
-#include "orientation_ctrl.h"
-#include "mySkew.h"
+#include <orientation_ctrl.h>
+#include <mySkew.h>
 
 //Unit Quaternion from a rotation matrix
 void RotQuaternion(const mat &Rot, vec &Quat)

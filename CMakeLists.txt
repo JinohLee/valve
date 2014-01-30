@@ -60,6 +60,8 @@ test_main.cpp
 src/mySkew.cpp
 src/Traj_gen.cpp
 src/orientation_ctrl.cpp
+src/ManipulationVars.cpp
+src/ValveModule.cpp
 )
 
 

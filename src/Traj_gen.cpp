@@ -5,7 +5,7 @@
 //////////////////////////////////////////////////
 //(initial position, displacement, time inverval, time)
 
-#include "Traj_gen.h"
+#include <Traj_gen.h>
 
 void line_traj(const vec &Xinit, vec &Xf, double Tf, double t, vec &Xd, vec &dXd)
 {
