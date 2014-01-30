@@ -33,10 +33,9 @@ void ValveModule::init(Boards_ctrl_basic* robolli) {
 }
 
 void ValveModule::controlLaw() {
-    /** TODO CHECK.. where does this q_l come from? */
-    vec q_l;
+    /** ALWAYS call this after a sense(), so that q_l is meaningful */
     if(mVars.isManipInit() == false)
-        mVars.init_manip(q_l);
+        mVars.init_manip(mVars.q_l);
 
     mVars.manip_kine(); //Calculate kinematics
 

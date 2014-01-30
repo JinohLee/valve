@@ -56,12 +56,18 @@ add_definitions(" -std=c++0x -Duse_namespace")
 
 set(SOURCES
 Boards_ctrl_basic.cpp
+Boards_ctrl_basic.h
 test_main.cpp
 src/mySkew.cpp
+include/mySkew.h
 src/Traj_gen.cpp
+include/Traj_gen.h
 src/orientation_ctrl.cpp
+include/orientation_ctrl.h
 src/ManipulationVars.cpp
+include/ManipulationVars.h
 src/ValveModule.cpp
+include/ValveModule.h
 )
 
 
@@ -83,6 +89,6 @@ blas
 add_executable(jinoh_arash_valve ${SOURCES})
 add_custom_command(TARGET jinoh_arash_valve POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E
-                         copy "${PROJECT_SOURCE_DIR}/config.yaml" config.yaml)
+                         copy "${PROJECT_SOURCE_DIR}/config.yaml" "config.yaml")
 target_link_libraries(jinoh_arash_valve ${LIBRARIES})
 install(TARGETS jinoh_arash_valve DESTINATION bin)
