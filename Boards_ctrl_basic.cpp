@@ -6,8 +6,9 @@
 #include <Boards_exception.h>
 #include <boost/tokenizer.hpp>
 #include <boost/format.hpp>
-#include "Boards_ctrl_basic.h"
 #include <ValveModule.h>
+
+#include "Boards_ctrl_basic.h"
 
 
 // *************************ALL GLOBAL VARIABLES*******************************
@@ -109,8 +110,9 @@ void Boards_ctrl_basic::th_init(void *) {
     init();
     test();
 
+    _robolli_legacy.init(/* interface goes here */);
     //initialize variables
-    manip_module.init(this);
+    manip_module.init(&_robolli_legacy);
 }
 
 

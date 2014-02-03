@@ -21,6 +21,7 @@
 #include <Boards_ctrl_ext.h>
 #include <boost/circular_buffer.hpp>
 #include <ValveModule.h>
+#include <robolli_legacy.h>
 
 /**
  * @class Boards_ctrl_basic
@@ -32,7 +33,9 @@
 class Boards_ctrl_basic : public Thread_hook, public Boards_ctrl_ext  {
 
 private:
+
     ValveModule manip_module;
+    robolli_legacy _robolli_legacy;
 
     boost::circular_buffer<log_user_t> log_user_buff[16];
     boost::circular_buffer<log_user_t> log_user_buff_Cart;

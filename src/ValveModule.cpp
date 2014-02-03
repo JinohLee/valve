@@ -10,11 +10,11 @@ std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
 
 ValveModule::ValveModule() {
     count_loop_1=0;
-    _robolli = NULL;
+    _robolli_legacy = NULL;
 }
 
-void ValveModule::init(Boards_ctrl_basic* robolli) {
-    _robolli = robolli;
+void ValveModule::init(robolli_legacy* robolli) {
+    _robolli_legacy = robolli;
 
     homingRobolli();
 
@@ -144,40 +144,41 @@ void ValveModule::controlLaw() {
 }
 
 void ValveModule::homingRobolli() {
-    static_cast<Boards_ctrl_ext *>(_robolli)->homing();
+    _robolli_legacy->homing();
 }
 
 void ValveModule::homingRobolli(const std::vector<float> &pos, const std::vector<float> &vel) {
-    static_cast<Boards_ctrl_ext *>(_robolli)->homing(pos,vel);
+    _robolli_legacy->homing(pos,vel);
 }
 
-void ValveModule::updateFromRobolli(ts_bc_data_t _ts_bc_data[MAX_MC_BOARDS]) {
-    for (int i=0; i<16; i++)
-     {
-         mVars.q_l(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Position/100000.0);
-         mVars.q_dot(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Velocity/1000.0);
+void ValveModule::updateFromRobolli(void* _ts_bc_data) {
+//    for (int i=0; i<16; i++)
+//     {
+//         mVars.q_l(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Position/100000.0);
+//         mVars.q_dot(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Velocity/1000.0);
 
-         if (i<14) mVars.tau(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Torque/1000.0);
-     }
+//         if (i<14) mVars.tau(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Torque/1000.0);
+//     }
 }
 
 bool ValveModule::updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOARDS]) {
-    if(trj_flag == 1) {
-        for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
-        {
-            _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
-        }
-        _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
-        _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);
+//    if(trj_flag == 1) {
+//        for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
+//        {
+//            _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
+//        }
+//        _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
+//        _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);
 
-        //Safety for joint limits
-        if(mVars.isSafe()) {
-            return true;
-        } else {
-            DPRINTF("Exceeding Joint Limits/Speed -- Control Stopped... \n");
-            return false;
-        }
-    } return false;
+//        //Safety for joint limits
+//        if(mVars.isSafe()) {
+//            return true;
+//        } else {
+//            DPRINTF("Exceeding Joint Limits/Speed -- Control Stopped... \n");
+//            return false;
+//        }
+//    } return false;
+    return false;
 }
 
 bool ValveModule::rotateValve() {

@@ -68,6 +68,8 @@ src/ManipulationVars.cpp
 include/ManipulationVars.h
 src/ValveModule.cpp
 include/ValveModule.h
+src/robolli_legacy.cpp
+include/robolli_legacy.h
 )
 
 
