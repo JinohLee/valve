@@ -21,8 +21,6 @@ class ValveModule {
     unsigned long int t_traj_start;
     long int g_tStart;
 
-    robolli_legacy* _robolli_legacy;
-
     bool reset();
 
     long int getTimeNsRobolli() { return _robolli_legacy->get_time_ns(); }
@@ -30,6 +28,8 @@ class ValveModule {
     void homingRobolli();
     void homingRobolli(const std::vector<float> &pos, const std::vector<float> &vel);
 public:
+
+    robolli_legacy* _robolli_legacy;
 
     ManipulationVars mVars;
     bool close_hand_flag;

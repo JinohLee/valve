@@ -151,7 +151,7 @@ void ValveModule::homingRobolli(const std::vector<float> &pos, const std::vector
     _robolli_legacy->homing(pos,vel);
 }
 
-void ValveModule::updateFromRobolli(void* _ts_bc_data) {
+void ValveModule::updateFromRobolli(int* _pos, int* _vel, int* _torque) {
 //    for (int i=0; i<16; i++)
 //     {
 //         mVars.q_l(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Position/100000.0);

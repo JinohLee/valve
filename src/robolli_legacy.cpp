@@ -1,17 +1,24 @@
 #include <robolli_legacy.h>
 #include <vector>
+#include <iostream>
+
+using namespace walkman::drc::valve;
 
 robolli_legacy::robolli_legacy() {
-
+    _iYarp = NULL;
+    l_arm_size = sizeof(l_arm)/sizeof(l_arm[0]);
+    r_arm_size = sizeof(r_arm)/sizeof(r_arm[0]);
+    l_farm_size = sizeof(l_farm)/sizeof(l_farm[0]);
+    r_farm_size = sizeof(r_farm)/sizeof(r_farm[0]);
 }
 
 
 robolli_legacy::~robolli_legacy() {
-
+    _iYarp = NULL;
 }
 
-void robolli_legacy::init(/* interface goes here? */) {
-
+void robolli_legacy::init(walkman::drc::valve::yarp_interface& iYarp) {
+    _iYarp = &iYarp;
 }
 
 /**
@@ -64,6 +71,45 @@ void robolli_legacy::homing(const std::vector<float> &pos_deg, const std::vector
 }
 
 unsigned long int robolli_legacy::get_time_ns() {
-    //return yarp::os::Time::now()*1E9;
-    return 0.0;
+    return yarp::os::Time::now()*1E9;
+}
+
+void robolli_legacy::getRobolliLeftArm(int* robolliVec, yarp::sig::Vector& left_arm_q, const unsigned int scale) {
+    if(left_arm_q.size() != l_arm_size+l_farm_size)
+        left_arm_q.resize(l_arm_size+l_farm_size);
+    for(unsigned int i = 0; i < l_arm_size; ++i)
+        left_arm_q[i] = robolliVec[l_arm[i]]/scale;
+    for(unsigned int i = 0; i < l_farm_size; ++i)
+        left_arm_q[i+l_arm_size] = robolliVec[l_farm[i]]/scale;
+}
+
+void robolli_legacy::getRobolliRightArm(int* robolliVec, yarp::sig::Vector& right_arm_q, const unsigned int scale) {
+    if(right_arm_q.size() != r_arm_size+r_farm_size)
+        right_arm_q.resize(r_arm_size+r_farm_size);
+    for(unsigned int i = 0; i < r_arm_size; ++i)
+        right_arm_q[i] = robolliVec[r_arm[i]]/scale;
+    for(unsigned int i = 0; i < r_farm_size; ++i)
+        right_arm_q[i+r_arm_size] = robolliVec[r_farm[i]]/scale;
+}
+
+void robolli_legacy::setRobolliLeftArm(int* robolliVec, yarp::sig::Vector& left_arm_q, const unsigned int scale) {
+    if(left_arm_q.size() != l_arm_size+l_farm_size) {
+        std::cout << "Error copying from yarp to robolli" << std::endl;
+        return;
+    }
+    for(unsigned int i = 0; i < l_arm_size; ++i)
+        robolliVec[l_arm[i]] = left_arm_q[i]*scale;
+    for(unsigned int i = 0; i < l_farm_size; ++i)
+        robolliVec[l_farm[i]] = left_arm_q[i+l_arm_size]*scale;
+}
+
+void robolli_legacy::setRobolliRightArm(int* robolliVec, yarp::sig::Vector& right_arm_q, const unsigned int scale) {
+    if(right_arm_q.size() != r_arm_size+r_farm_size) {
+        std::cout << "Error copying from yarp to robolli" << std::endl;
+        return;
+    }
+    for(unsigned int i = 0; i < r_arm_size; ++i)
+        robolliVec[r_arm[i]] = right_arm_q[i]*scale;
+    for(unsigned int i = 0; i < r_farm_size; ++i)
+        robolliVec[r_farm[i]] = right_arm_q[i+r_arm_size]*scale;
 }
