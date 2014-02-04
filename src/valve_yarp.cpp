@@ -60,7 +60,9 @@ bool valve_yarp::updateModule()
         switch ( cmd ) {
             case 'h':
                 std::cout << "Set home pos\n";
-                /** TODO homing!!! */
+                /** TODO homing!!!
+                         to homePos
+                         with velocity homeVel */
                 break;
 
             case 't':
