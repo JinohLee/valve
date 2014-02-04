@@ -22,8 +22,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ##################################################################
 #    Project files.  Adjust to fit your project.                 #
 ##################################################################
-SET(ARMADILLO_LIB_USER_PATH "external/armadillo/usr/lib" CACHE STRING "folder where armadillo libs are installed")
-SET(ARMADILLO_INCLUDE_USER_PATH "external/armadillo/usr/include" CACHE STRING "folder where armadillo libs are installed")
+SET(ARMADILLO_LIB_USER_PATH "/usr/lib" CACHE STRING "folder where armadillo libs are installed")
+SET(ARMADILLO_INCLUDE_USER_PATH "/usr/include" CACHE STRING "folder where armadillo libs are installed")
 
 include_directories(include external/include ${YARP_INCLUDE_DIRS} ${ICUB_INCLUDE_DIRS})
 # add required linker flags
