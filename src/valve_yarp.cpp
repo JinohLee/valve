@@ -19,39 +19,32 @@ const float homePos[] = {
     0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
     // 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31        
 
-  valve_yarp::valve_yarp() : _robolli_legacy(iYarp) {;}
 
-  double valve_yarp::getPeriod()
-  {
-    return .001;
+  valve_yarp::valve_yarp(const double period, int argc, char* argv[], yarp_interface& yarpInterface) :
+      RateThread(int(period*1000.0)),
+      iYarp(yarpInterface),
+      _robolli_legacy(iYarp) {
+      ;
   }
 
-  bool valve_yarp::configure ( yarp::os::ResourceFinder &rf )
-  {
+
+    bool valve_yarp::threadInit() {
         bIsRT = false;
-        tStart = yarp::os::Time::now();
-      return true;
-    Value value=rf.find ( "period" );
-    if ( value.isNull() )
-      {
-        assert ( false );
-        return false;
-      }
-      else
-      {
-	_period =  value.asDouble()*1000.0;
-      }
-
-    makeRealTime();
+        makeRealTime();
       
-
+        tStart = yarp::os::Time::now();
         _robolli_legacy.init();
         //initialize variables
         manip_module.init(&_robolli_legacy);
-      }
+        return true;
+    }
+
+    void valve_yarp::threadRelease() {
+        ;
+    }
   
 
-bool valve_yarp::updateModule()
+void valve_yarp::run()
 {
 
 #ifdef TESTING_ENABLED
@@ -113,8 +106,6 @@ bool valve_yarp::updateModule()
 
     if(desired_outputs.doMove)
         iYarp.move(desired_outputs);
-
-    return true;
 }
 
   const robot_joints_output& valve_yarp::controlLaw (const robot_state_input& inputs, unsigned long int RTtime )
@@ -132,8 +123,12 @@ bool valve_yarp::updateModule()
 
     if(manip_module.updateToRobolli(manip_module._robolli_legacy->_pos,
                                     manip_module._robolli_legacy->_home)) {
-        ;   // TODO copy the module _pos output to the outputs var
+        manip_module._robolli_legacy->updateToYarp(outputs);
+        outputs.doMove = true;
+    } else {
+        outputs.doMove = false;
     }
+
     return outputs;
   }
 
@@ -150,8 +145,18 @@ bool valve_yarp::updateModule()
     }
   }
   
-    void valve_yarp::clearCommand()
+  void valve_yarp::clearCommand()
   {
     last_command = NONE;
+  }
+
+  /** TODO implement */
+  bool valve_yarp::setReady() {
+      return true;
+  }
+
+  /** TODO implement */
+  bool valve_yarp::setStopped() {
+      return true;
   }
 

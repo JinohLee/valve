@@ -11,6 +11,7 @@
 #define WALKMAN_DRC_VALVE_COMMAND_TURN "turn"
 #define WALKMAN_DRC_VALVE_COMMAND_RELEASE "release"
 #define WALKMAN_DRC_VALVE_COMMAND_MOVE_AWAY "move_away"
+
 #define WALKMAN_DRC_VALVE_STATUS_WAITING "waiting"
 #define WALKMAN_DRC_VALVE_STATUS_READY "ready"
 #define WALKMAN_DRC_VALVE_STATUS_REACHING "reaching"
@@ -26,6 +27,9 @@
 #define WALKMAN_DRC_VALVE_STATUS_MOVING_AWAY "moving_away"
 #define WALKMAN_DRC_VALVE_STATUS_MOVED_AWAY "moved_away"
 
+#define WALKMAN_DRC_VALVE_SWITCH_START "start"
+#define WALKMAN_DRC_VALVE_SWITCH_STOP "stop"
+#define WALKMAN_DRC_VALVE_SWITCH_PAUSE "pause"
 
 
 namespace walkman {
