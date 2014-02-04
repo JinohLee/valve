@@ -5,7 +5,7 @@
 using namespace arma;
 
 typedef struct{
-    uint64_t ts;
+    unsigned long int ts;
     double des_pos;
     double qm;
 
@@ -58,9 +58,6 @@ public:
     void rotating(u_int64_t dt_ns);
     void init_manip(vec _q_l);
     bool isManipInit();
-
-    const mat& getFkinPoR();
-    const mat& getFkinPoL();
 
     const vec& get_valve_data();
     inline double get_radius();

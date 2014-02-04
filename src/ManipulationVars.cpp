@@ -500,17 +500,9 @@ bool ManipulationVars::isSafe(){
             }
         }
 
-
-      /* for (int my_jnt_n =0; my_jnt_n<14; my_jnt_n++)
-       {
-          if ((_pos[two_arms_nohands[my_jnt_n]-1] - _ts_bc_data[two_arms_nohands[my_jnt_n]-1].raw_bc_data.mc_bc_data.Position)  > 100000.0 * 5 * M_PI/180.0)
-                  safety_flag=safety_flag+1;
-       }*/
     if(safety_flag == 0)
         return true;
     return false;
 }
 
-const mat& ManipulationVars::getFkinPoR() { return fkin_po_right; };
-const mat& ManipulationVars::getFkinPoL() { return fkin_po_left; };
 

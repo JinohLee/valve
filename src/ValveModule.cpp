@@ -1,12 +1,15 @@
 #include <ValveModule.h>
 #include <boost/numeric/ublas/io.hpp>
-#include "Boards_ctrl_basic.h"
 
 using namespace boost::numeric::ublas;
 using namespace arma;
+using namespace walkman::drc::valve;
 
-std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
-                             20, 21, 22, 23, 29, 30, 31, 33};
+int two_arms[] = {16, 17, 18 ,19, 26, 27, 28, 32,
+                  20, 21, 22, 23, 29, 30, 31, 33};
+
+int two_arms_nohands[] = {16, 17, 18 ,19, 26, 27, 28,
+                          20, 21, 22, 23, 29, 30, 31};
 
 ValveModule::ValveModule() {
     count_loop_1=0;
@@ -147,37 +150,35 @@ void ValveModule::homingRobolli() {
     _robolli_legacy->homing();
 }
 
-void ValveModule::homingRobolli(const std::vector<float> &pos, const std::vector<float> &vel) {
-    _robolli_legacy->homing(pos,vel);
-}
+void ValveModule::updateFromRobolli(int _mc_bc_data_Position[MAX_MC_BOARDS],
+                                    int _mc_bc_data_Velocity[MAX_MC_BOARDS],
+                                    int _mc_bc_data_Torque[MAX_MC_BOARDS]) {
+    for (int i=0; i<16; i++)
+     {
+         mVars.q_l(i)=double(_mc_bc_data_Position[two_arms[i]-1]/100000.0);
+         mVars.q_dot(i)=double(_mc_bc_data_Velocity[two_arms[i]-1]/1000.0);
 
-void ValveModule::updateFromRobolli(int* _pos, int* _vel, int* _torque) {
-//    for (int i=0; i<16; i++)
-//     {
-//         mVars.q_l(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Position/100000.0);
-//         mVars.q_dot(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Velocity/1000.0);
-
-//         if (i<14) mVars.tau(i)=double(_ts_bc_data[two_arms[i]-1].raw_bc_data.mc_bc_data.Torque/1000.0);
-//     }
+         if (i<14) mVars.tau(i)=double(_mc_bc_data_Torque[two_arms[i]-1]/1000.0);
+     }
 }
 
 bool ValveModule::updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOARDS]) {
-//    if(trj_flag == 1) {
-//        for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
-//        {
-//            _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
-//        }
-//        _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
-//        _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);
+    if(trj_flag == 1) {
+        for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
+        {
+            _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
+        }
+        _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
+        _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);
 
-//        //Safety for joint limits
-//        if(mVars.isSafe()) {
-//            return true;
-//        } else {
-//            DPRINTF("Exceeding Joint Limits/Speed -- Control Stopped... \n");
-//            return false;
-//        }
-//    } return false;
+        //Safety for joint limits
+        if(mVars.isSafe()) {
+            return true;
+        } else {
+            std::cout << "Exceeding Joint Limits/Speed -- Control Stopped... \n";
+            return false;
+        }
+    } return false;
     return false;
 }
 

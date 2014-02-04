@@ -2,11 +2,12 @@
 #define __VALVEMODULE_H__
 
 #include <ManipulationVars.h>
-#include <Boards_ctrl_ext.h>
 #include <yarp/os/all.h>
 #include <robolli_legacy.h>
 
-class Boards_ctrl_basic;
+namespace walkman {
+namespace drc {
+namespace valve {
 
 class ValveModule {
     int count_loop_1;
@@ -39,8 +40,12 @@ public:
 
     void controlLaw();
 
-    void updateFromRobolli(void* _ts_bc_data);
-    bool updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOARDS]);
+    void updateFromRobolli(int _mc_bc_data_Position[MAX_MC_BOARDS],
+                           int _mc_bc_data_Velocity[MAX_MC_BOARDS],
+                           int _mc_bc_data_Torque[MAX_MC_BOARDS]);
+
+    bool updateToRobolli(int _pos[MAX_MC_BOARDS],
+                         int _home[MAX_MC_BOARDS]);
 
     bool rotateValve();
     bool closeHands();
@@ -50,5 +55,9 @@ public:
     bool doOpenHand();
     bool doPushing();
 };
+
+}
+}
+}
 
 #endif

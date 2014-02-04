@@ -27,6 +27,8 @@ class valve_yarp: public yarp::os::RFModule
 {
 
 public:
+  valve_yarp();
+
   double getPeriod();
   bool configure ( yarp::os::ResourceFinder &rf );
 
@@ -34,14 +36,16 @@ public:
 
 private:
   
-  const robot_joints_output& controlLaw ( const walkman::drc::valve::robot_state_input& inputs, double RTtime );
+  const robot_joints_output& controlLaw ( const robot_state_input& inputs, unsigned long int RTtime );
   void makeRealTime();
   void clearCommand();
   status computeStatus();
   double tStart;
+  bool bIsRT;
   
   yarp_interface iYarp;
   ValveModule manip_module;
+  robolli_legacy _robolli_legacy;
   
 
   status current_status;

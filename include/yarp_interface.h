@@ -20,6 +20,7 @@ namespace valve
 
 struct robot_state_input
 {
+  // order is left_arm; right_arm
   yarp::sig::Vector q;
   yarp::sig::Vector q_dot;
   yarp::sig::Vector tau_right;
@@ -29,6 +30,7 @@ struct robot_state_input
 struct robot_joints_output
 {
   yarp::sig::Vector q;
+  bool doMove;
 };
 
 
@@ -40,7 +42,7 @@ public:
   void getCommand ( command& cmd, int& seq_num );
 
 #ifdef TESTING_ENABLED
-  void getKBDCommand( char& cmd);
+  bool getKBDCommand( char& cmd);
 #endif
 
   void setMaxSpeed ( double max_speed );
@@ -52,6 +54,7 @@ public:
 
   const robot_state_input& sense();
 
+  // moves using DirectControl
   void move ( const robot_joints_output& outputs );
   
   inline robot_joints_output& getOutputs()
@@ -63,6 +66,9 @@ public:
   {
     return joint_numbers;
   };
+
+  int left_arm_dofs;
+  int right_arm_dofs;
 
 private:
 
@@ -115,8 +121,6 @@ private:
   yarp::os::BufferedPort<yarp::os::Bottle> start_port;
   yarp::os::BufferedPort<yarp::os::Bottle> stop_port;
   yarp::os::BufferedPort<yarp::os::Bottle> pause_port;
-  int left_arm_dofs;
-  int right_arm_dofs;
 
   bool createPolyDriver ( const std::string &kinematic_chain, yarp::dev::PolyDriver &polyDriver );
 };

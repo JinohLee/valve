@@ -3,29 +3,23 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <assert.h>
-#include "valve_yarp.h"
+#include <valve_yarp.h>
 #include <yarp/os/Time.h>
+#include <iostream>
 
 using namespace yarp::os;
 using namespace yarp::sig;
 using namespace walkman::drc::valve;
 
-
-const std::vector<float> homePos = {
+const float homePos[] = {
     // lower body #15
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     //  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15
     // upper body #10
     0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
-    // 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-    
-    
-std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
-        20, 21, 22, 23, 29, 30, 31, 33};
-        
-std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
-            20, 21, 22, 23, 29, 30, 31};
-            
+    // 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31        
+
+  valve_yarp::valve_yarp() : _robolli_legacy(iYarp) {;}
 
   double valve_yarp::getPeriod()
   {
@@ -34,6 +28,8 @@ std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
 
   bool valve_yarp::configure ( yarp::os::ResourceFinder &rf )
   {
+        bIsRT = false;
+        tStart = yarp::os::Time::now();
       return true;
     Value value=rf.find ( "period" );
     if ( value.isNull() )
@@ -48,7 +44,8 @@ std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
 
     makeRealTime();
       
-        _robolli_legacy.init(/* interface goes here */);
+
+        _robolli_legacy.init();
         //initialize variables
         manip_module.init(&_robolli_legacy);
       }
@@ -62,42 +59,42 @@ bool valve_yarp::updateModule()
     if(iYarp.getKBDCommand(cmd)) {
         switch ( cmd ) {
             case 'h':
-                DPRINTF("Set home pos\n");
-                manip_module._robolli_legacy->homing(homePos, homeVel);
+                std::cout << "Set home pos\n";
+                /** TODO homing!!! */
                 break;
 
             case 't':
-                DPRINTF("trajectory\n");
+                std::cout << "trajectory\n";
                 manip_module.doTrajectory();
                 break;
 
             case 'r':
-                DPRINTF("reaching\n");
+                std::cout << "reaching\n";
                 manip_module.doReaching();
                 break;
 
             case 'p':
-                DPRINTF("pushing towards the valve\n");
+                std::cout << "pushing towards the valve\n";
                 manip_module.doPushing();
                 break;
 
             case 'o':
-                DPRINTF("openning the hand\n");
+                std::cout << "openning the hand\n";
                 manip_module.doOpenHand();
             break;
 
             case 'm':
-                DPRINTF("moving far from the valve\n");
+                std::cout << "moving far from the valve\n";
                 manip_module.moveFarFromValve();
             break;
 
             case 'c':
-                DPRINTF("closing hands\n");
+                std::cout << "closing hands\n";
                 manip_module.closeHands();
                 break;
 
             case 'v':
-                DPRINTF("valve rotation\n");
+                std::cout << "valve rotation\n";
                 manip_module.rotateValve();
                 break;
         }
@@ -112,25 +109,29 @@ bool valve_yarp::updateModule()
 
     const robot_joints_output& desired_outputs=controlLaw(inputs, tElapsedNs);
 
-    iYarp.move(desired_outputs);
+    if(desired_outputs.doMove)
+        iYarp.move(desired_outputs);
 
     return true;
 }
 
-  const robot_joints_output& valve_yarp::controlLaw (const robot_state_input& inputs ,unsigned long int RTtime )
+  const robot_joints_output& valve_yarp::controlLaw (const robot_state_input& inputs, unsigned long int RTtime )
   {
     robot_joints_output& outputs=iYarp.getOutputs();
 
     // TODO need to call the robolli legacy code here,
     //      what about _ts_bc_data ?
-    manip_module.updateFromRobolli(_ts_bc_data);
+    manip_module._robolli_legacy->updateFromYarp(inputs);
+    manip_module.updateFromRobolli(manip_module._robolli_legacy->_mc_bc_data_Position,
+                                   manip_module._robolli_legacy->_mc_bc_data_Velocity,
+                                   manip_module._robolli_legacy->_mc_bc_data_Torque);
 
     manip_module.controlLaw();
 
     if(manip_module.updateToRobolli(manip_module._robolli_legacy->_pos,
-                                    manip_module._robolli_legacy->_home))
+                                    manip_module._robolli_legacy->_home)) {
         ;   // TODO copy the module _pos output to the outputs var
-
+    }
     return outputs;
   }
 

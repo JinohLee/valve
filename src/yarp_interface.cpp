@@ -57,6 +57,9 @@ yarp_interface::yarp_interface()
     polyDriver_right_arm_FT.open(FT_right_prop);
     if(!polyDriver_right_arm_FT.isValid())
         printf("error opening analogServer");
+
+    polyDriver_right_arm_FT.view(this->FT_right_arm);
+
 #endif
 
 #if TESTING_ENABLED
@@ -69,8 +72,6 @@ yarp_interface::yarp_interface()
     speed_port_right.open("/turn_valve/speed_right:i");
     yarp.connect("/turn_valve/speed_right:i","/coman/speed/analog/right_arm:o");
     
-    
-    polyDriver_right_arm_FT.view(this->FT_right_arm);
 
     valve_data_port.open("/turn_valve/valve_data:i");
     command_port.open("/turn_valve/control:i");
@@ -276,13 +277,13 @@ const robot_state_input& yarp_interface::sense()
     if(!(ft_arm_bot == NULL) && !ft_arm_bot->isNull())
     {
         for(unsigned int i = 0; i < ft_arm_bot->size(); ++i)
-            left_arm_FT[i] = ft_arm_bot->get(i).asDouble();
+            input.tau_left[i] = ft_arm_bot->get(i).asDouble();
     }
     ft_arm_bot = FT_right_arm_port.read(false);
     if(!(ft_arm_bot == NULL) && !ft_arm_bot->isNull())
     {
         for(unsigned int i = 0; i < ft_arm_bot->size(); ++i)
-            right_arm_FT[i] = ft_arm_bot->get(i).asDouble();
+            input.tau_right[i] = ft_arm_bot->get(i).asDouble();
     }
 #else
     FT_left_arm->read(input.tau_left);
@@ -294,9 +295,9 @@ const robot_state_input& yarp_interface::sense()
 
 
 void yarp_interface::move(const robot_joints_output& outputs) {
-    //positionDirect_left_leg->setPositions(outputs.q.data());
-    //positionDirect_right_leg->setPositions(&outputs.q[left_leg_dofs]);
-    positionControl_left_arm->positionMove(outputs.q.data());
-    positionControl_right_arm->positionMove(&outputs.q[left_arm_dofs]);
+    positionDirect_left_arm->setPositions(outputs.q.data());
+    positionDirect_right_arm->setPositions(outputs.q.data() + left_arm_dofs);
+//    positionControl_left_arm->positionMove(outputs.q.data());
+//    positionControl_right_arm->positionMove(&outputs.q[left_arm_dofs]);
 }
 
