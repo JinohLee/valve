@@ -29,6 +29,21 @@ yarp_interface::yarp_interface()
         polyDriver_right_arm.view(positionDirect_right_arm);
     }
 
+    if(createPolyDriver("left_hand", polyDriver_left_hand))
+    {
+        polyDriver_left_hand.view(encodersMotor_left_hand);
+        polyDriver_left_hand.view(positionControl_left_hand);
+        polyDriver_left_hand.view(controlMode_left_hand);
+        polyDriver_left_hand.view(positionDirect_left_hand);
+    }
+    if(createPolyDriver("right_hand", polyDriver_right_hand))
+    {
+        polyDriver_right_hand.view(encodersMotor_right_hand);
+        polyDriver_right_hand.view(positionControl_right_hand);
+        polyDriver_right_hand.view(controlMode_right_hand);
+        polyDriver_right_hand.view(positionDirect_right_hand);
+    }
+
 #if(FT_PORT)
     FT_left_arm_port.open("/coman/forceTorque/analog/left_arm:o");
     FT_right_arm_port.open("/coman/forceTorque/analog/right_arm:o");
@@ -77,6 +92,9 @@ yarp_interface::yarp_interface()
     command_port.open("/turn_valve/control:i");
     status_port.open("/turn_valve/status:o");       
     
+    left_hand_dofs = 1;
+    right_hand_dofs = 1;
+
     left_arm_dofs = -1;
     right_arm_dofs = -1;
     int temp_storage=0;
@@ -92,26 +110,38 @@ yarp_interface::yarp_interface()
     
     joint_numbers.push_back(left_arm_dofs);
     joint_numbers.push_back(right_arm_dofs);
-    
+    joint_numbers.push_back(left_hand_dofs);
+    joint_numbers.push_back(right_hand_dofs);
 
-    if(input.q.size()!=left_arm_dofs+right_arm_dofs) {
-        input.q.resize(left_arm_dofs+right_arm_dofs,0.0);
+    int total_dofs =    left_arm_dofs +
+                        left_hand_dofs +
+                        right_arm_dofs +
+                        right_hand_dofs;
+    int left_arm_total_dofs =   left_arm_dofs +
+                                left_hand_dofs;
+    int right_arm_total_dofs =  right_arm_dofs +
+                                right_hand_dofs;
+    if(input.q.size()!= total_dofs) {
+        input.q.resize(total_dofs, 0.0);
     }
 
-    if(outputs.q.size()!=left_arm_dofs+right_arm_dofs) {
-        outputs.q.resize(left_arm_dofs+right_arm_dofs,0.0);
+    if(outputs.q.size()!=   total_dofs) {
+        outputs.q.resize(total_dofs,
+                         0.0);
     }
     
-    if(input.q_dot.size()!=left_arm_dofs+right_arm_dofs) {
-        input.q_dot.resize(left_arm_dofs+right_arm_dofs,0.0);
+    if(input.q_dot.size()!=total_dofs) {
+        input.q_dot.resize(total_dofs,
+                           0.0);
     }
-    input.tau_left.resize(8);
-    input.tau_right.resize(8);
-    //TODO place in the right piece of code (flat_walk_yarp) in the state machine
+    input.tau_left.resize(left_arm_total_dofs);
+    input.tau_right.resize(right_arm_total_dofs);
+    //TODO place in the right pSiece of code (flat_walk_yarp) in the state machine
     positionControl_left_arm->setPositionMode();
     positionControl_right_arm->setPositionMode();
-    
-    
+
+    positionControl_left_hand->setPositionMode();
+    positionControl_right_hand->setPositionMode();
 }
 
 void yarp_interface::setMaxSpeed(double max_speed)
@@ -121,6 +151,10 @@ void yarp_interface::setMaxSpeed(double max_speed)
     max_speeds_r.resize(joint_numbers[1],max_speed);
     positionControl_left_arm->setRefSpeeds(max_speeds_l.data());
     positionControl_right_arm->setRefSpeeds(max_speeds_r.data());
+    max_speeds_l.resize(joint_numbers[2],max_speed);
+    max_speeds_r.resize(joint_numbers[3],max_speed);
+    positionControl_left_hand->setRefSpeeds(max_speeds_l.data());
+    positionControl_right_hand->setRefSpeeds(max_speeds_r.data());
 }
 
 
@@ -266,7 +300,13 @@ void yarp_interface::getValveData()
 const robot_state_input& yarp_interface::sense() 
 {
     encodersMotor_left_arm->getEncoders(input.q.data());
-    encodersMotor_right_arm->getEncoders(&input.q[left_arm_dofs]);
+    encodersMotor_left_hand->getEncoders(&input.q[left_arm_dofs]);
+
+    encodersMotor_right_arm->getEncoders(&input.q[left_arm_dofs+left_hand_dofs]);
+    encodersMotor_right_hand->getEncoders(&input.q[ left_arm_dofs +
+                                                    left_hand_dofs +
+                                                    right_arm_dofs]);
+
     std::cout<<input.q.toString()<<std::endl;
     //speed_port_left.read(input.q_dot.data());
     //speed_port_right.read(&input.q_dot[left_leg_dofs]);
@@ -296,7 +336,13 @@ const robot_state_input& yarp_interface::sense()
 
 void yarp_interface::move(const robot_joints_output& outputs) {
     positionDirect_left_arm->setPositions(outputs.q.data());
-    positionDirect_right_arm->setPositions(outputs.q.data() + left_arm_dofs);
+    positionDirect_left_hand->setPositions(&outputs.q[left_arm_dofs]);
+
+    positionDirect_right_arm->setPositions(&outputs.q[  left_arm_dofs +
+                                                        left_hand_dofs]);
+    positionDirect_right_hand->setPositions(&outputs.q[ left_arm_dofs +
+                                                        left_hand_dofs +
+                                                        right_hand_dofs]);
 //    positionControl_left_arm->positionMove(outputs.q.data());
 //    positionControl_right_arm->positionMove(&outputs.q[left_arm_dofs]);
 }

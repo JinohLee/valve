@@ -133,20 +133,22 @@ void robolli_legacy::updateFromYarp(const robot_state_input& inputs) {
         return;
     }
 
-    setRobolliLeftArm(&_mc_bc_data_Position[0],
+    setRobolliLeftArm(_mc_bc_data_Position,
                       inputs.q.data(),
                       1E5*CTRL_DEG2RAD);
-    setRobolliLeftArm(&_mc_bc_data_Velocity[0],
-                      inputs.q.data(),
+    setRobolliLeftArm(_mc_bc_data_Velocity,
+                      inputs.q_dot.data(),
                       1E3*CTRL_DEG2RAD);
-    setRobolliLeftArm(&_mc_bc_data_Torque[0],
-                      inputs.q.data(),
+    setRobolliLeftArm(_mc_bc_data_Torque,
+                      inputs.tau_left.data(),
                       1E3);
     setRobolliRightArm(_mc_bc_data_Position,
-                       inputs.q.data()+_iYarp.left_arm_dofs,
+                       &inputs.q[_iYarp.left_arm_dofs +
+                                 _iYarp.left_hand_dofs],
                        1E5*CTRL_DEG2RAD);
     setRobolliRightArm(_mc_bc_data_Velocity,
-                      inputs.q_dot.data()+_iYarp.left_arm_dofs,
+                      &inputs.q_dot[_iYarp.left_arm_dofs +
+                                    _iYarp.left_hand_dofs],
                       1E3*CTRL_DEG2RAD);
     setRobolliRightArm(_mc_bc_data_Torque,
                       inputs.tau_right.data(),

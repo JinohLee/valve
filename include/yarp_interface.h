@@ -8,7 +8,7 @@
 #include <interface.h>
 
 #define TESTING_ENABLED true
-#define FT_ENABLED true
+#define FT_ENABLED false
 #define FT_PORT true
 
 namespace walkman
@@ -68,7 +68,9 @@ public:
   };
 
   int left_arm_dofs;
+  int left_hand_dofs;
   int right_arm_dofs;
+  int right_hand_dofs;
 
 private:
 
@@ -91,6 +93,20 @@ private:
 
   yarp::dev::PolyDriver polyDriver_left_arm;
   yarp::dev::PolyDriver polyDriver_right_arm;
+
+  yarp::dev::IEncodersTimed *encodersMotor_left_hand;
+  yarp::dev::IEncodersTimed *encodersMotor_right_hand;
+  yarp::dev::IPositionControl2 *positionControl_left_hand;
+  yarp::dev::IPositionControl2 *positionControl_right_hand;
+  yarp::dev::IPositionDirect *positionDirect_left_hand;
+  yarp::dev::IPositionDirect *positionDirect_right_hand;
+
+  yarp::dev::IControlMode *controlMode_left_hand;
+  yarp::dev::IControlMode *controlMode_right_hand;
+
+  yarp::dev::PolyDriver polyDriver_left_hand;
+  yarp::dev::PolyDriver polyDriver_right_hand;
+
 
 #ifdef FT_ENABLED
 
