@@ -49,16 +49,20 @@ public:
 
         void getRobolliLeftArm(const int* robolliVec,
                                double* left_arm_data,
-                               const unsigned int scale);
+                               const unsigned int scale,
+                               const int* offset);
         void getRobolliRightArm(const int* robolliVec,
                                 double* right_arm_data,
-                                const unsigned int scale);
+                                const unsigned int scale,
+                                const int* offset);
         void setRobolliLeftArm(int* robolliVec,
                                const double* left_arm_data,
-                               const unsigned int scale);
+                               const unsigned int scale,
+                               const int* offset);
         void setRobolliRightArm(int* robolliVec,
                                 const double* right_arm_data,
-                                const unsigned int scale);
+                                const unsigned int scale,
+                                const int* offset);
 
         yarp_interface& _iYarp;
 };
