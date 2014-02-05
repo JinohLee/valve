@@ -122,10 +122,6 @@ private:
 #endif
 
 #endif
-
-  yarp::os::BufferedPort<yarp::sig::Vector> speed_port_left;
-  yarp::os::BufferedPort<yarp::sig::Vector> speed_port_right;
-  
   
   yarp::os::BufferedPort<yarp::os::Bottle> valve_data_port;
   yarp::os::Port status_port;

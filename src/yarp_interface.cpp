@@ -79,14 +79,7 @@ yarp_interface::yarp_interface()
 
 #if TESTING_ENABLED
     command_KBD_port.open("/turn_valve/cmd_kbd:i");
-#endif
-
-    speed_port_left.open("/turn_valve/speed_left:i");
-    yarp.connect("/turn_valve/speed_left:i","/coman/speed/analog/left_arm:o");
-
-    speed_port_right.open("/turn_valve/speed_right:i");
-    yarp.connect("/turn_valve/speed_right:i","/coman/speed/analog/right_arm:o");
-    
+#endif    
 
     valve_data_port.open("/turn_valve/valve_data:i");
     command_port.open("/turn_valve/control:i");
@@ -300,16 +293,22 @@ void yarp_interface::getValveData()
 const robot_state_input& yarp_interface::sense() 
 {
     encodersMotor_left_arm->getEncoders(input.q.data());
-    encodersMotor_left_hand->getEncoders(&input.q[left_arm_dofs]);
+    encodersMotor_left_hand->getEncoders(&input.q[  left_arm_dofs]);
 
-    encodersMotor_right_arm->getEncoders(&input.q[left_arm_dofs+left_hand_dofs]);
+    encodersMotor_right_arm->getEncoders(&input.q[  left_arm_dofs +
+                                                    left_hand_dofs]);
     encodersMotor_right_hand->getEncoders(&input.q[ left_arm_dofs +
                                                     left_hand_dofs +
                                                     right_arm_dofs]);
 
+    encodersMotor_left_arm->getEncoderSpeeds(input.q_dot.data());
+    encodersMotor_left_hand->getEncoderSpeeds(&input.q_dot[  left_arm_dofs]);
+    encodersMotor_right_arm->getEncoderSpeeds(&input.q_dot[  left_arm_dofs +
+                                                                    left_hand_dofs]);
+    encodersMotor_right_hand->getEncoderSpeeds(&input.q_dot[ left_arm_dofs +
+                                                             left_hand_dofs +
+                                                             right_arm_dofs]);
     std::cout<<input.q.toString()<<std::endl;
-    //speed_port_left.read(input.q_dot.data());
-    //speed_port_right.read(&input.q_dot[left_leg_dofs]);
 
 #ifdef FT_ENABLED
 #if(FT_PORT)
