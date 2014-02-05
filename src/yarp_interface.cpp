@@ -308,7 +308,8 @@ const robot_state_input& yarp_interface::sense()
     encodersMotor_right_hand->getEncoderSpeeds(&input.q_dot[ left_arm_dofs +
                                                              left_hand_dofs +
                                                              right_arm_dofs]);
-    std::cout<<input.q.toString()<<std::endl;
+    std::cout<<"q:     "<<input.q.toString()<<std::endl;
+    std::cout<<"q_dot: "<<input.q_dot.toString()<<std::endl;
 
 #ifdef FT_ENABLED
 #if(FT_PORT)
