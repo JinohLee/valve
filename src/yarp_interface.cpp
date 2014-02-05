@@ -45,14 +45,14 @@ yarp_interface::yarp_interface()
     }
 
 #if(FT_PORT)
-    FT_left_arm_port.open("/coman/forceTorque/analog/left_arm:o");
-    FT_right_arm_port.open("/coman/forceTorque/analog/right_arm:o");
+    FT_left_arm_port.open("/coman/left_arm/analog:o/forceTorque");
+    FT_right_arm_port.open("/coman/right_arm/analog:o/forceTorque");
 #else
     yarp::os::Property FT_left_prop;
     FT_left_prop.put("device", "analogsensorclient");
     FT_left_prop.put("robotName", "coman");
-    FT_left_prop.put("remote", "/coman/forceTorque/analog/left_arm");
-    FT_left_prop.put("local", "/FT_client_left");
+    FT_left_prop.put("remote", "/coman/left_arm/analog:o/forceTorque");
+    FT_left_prop.put("local", "/FT_client_left_arm:o");
     FT_left_prop.put("rate", 1);
 
     polyDriver_left_arm_FT.open(FT_left_prop);
@@ -65,8 +65,8 @@ yarp_interface::yarp_interface()
     yarp::os::Property FT_right_prop;
     FT_right_prop.put("device", "analogsensorclient");
     FT_right_prop.put("robotName", "coman");
-    FT_right_prop.put("remote", "/coman/forceTorque/analog/right_arm");
-    FT_right_prop.put("local", "/FT_client_right");
+    FT_right_prop.put("remote", "/coman/right_arm/analog:o/forceTorque");
+    FT_right_prop.put("local", "/FT_client_right_arm:o");
     FT_right_prop.put("rate", 1);
 
     polyDriver_right_arm_FT.open(FT_right_prop);
