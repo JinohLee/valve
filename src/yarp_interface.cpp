@@ -158,7 +158,10 @@ yarp_interface::~yarp_interface()
     start_port.close();
     stop_port.close();
     pause_port.close();
-//    steps_port.close();
+    polyDriver_left_arm.close();
+    polyDriver_right_arm.close();
+    polyDriver_left_hand.close();
+    polyDriver_right_hand.close();
 }
 
 bool yarp_interface::createPolyDriver(const std::string& kinematic_chain, yarp::dev::PolyDriver& polyDriver)
