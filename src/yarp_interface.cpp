@@ -236,18 +236,23 @@ void yarp_interface::getCommand(command& cmd, int& seq_num) {
     seq_num = seq_num_i;
 }
 
+#ifdef TESTING_ENABLED
 bool yarp_interface::getKBDCommand(char& cmd) {
-    yarp::os::Bottle* bot_command = command_port.read(false);
-    if(bot_command!= NULL && !bot_command->isNull()) {
+    yarp::os::Bottle* bot_command = NULL;
+    bot_command = command_KBD_port.read(false);
+    if(bot_command != NULL && bot_command->size() > 0) {
+        std::cout << "Reiceved command from keyboard: ";
         std::string command_string = bot_command->get(0).asString();
         if( command_string.size() > 0 &&
             command_string.at(0) != 0) {
             cmd = command_string.at(0);
+            std::cout << cmd << std::endl;
             return true;
         }
     }
     return false;
 }
+#endif
 
 void yarp_interface::setStatus(status status_o, int seq_num_o)
 {
@@ -311,8 +316,8 @@ const robot_state_input& yarp_interface::sense()
     encodersMotor_right_hand->getEncoderSpeeds(&input.q_dot[ left_arm_dofs +
                                                              left_hand_dofs +
                                                              right_arm_dofs]);
-    std::cout<<"q:     "<<input.q.toString()<<std::endl;
-    std::cout<<"q_dot: "<<input.q_dot.toString()<<std::endl;
+//    std::cout<<"q:     "<<input.q.toString()<<std::endl;
+//    std::cout<<"q_dot: "<<input.q_dot.toString()<<std::endl;
 
 #ifdef FT_ENABLED
 #if(FT_PORT)

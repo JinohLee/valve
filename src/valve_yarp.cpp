@@ -104,8 +104,9 @@ void valve_yarp::run()
 
     const robot_joints_output& desired_outputs=controlLaw(inputs, tElapsedNs);
 
-    if(desired_outputs.doMove)
+    if(desired_outputs.doMove) {
         iYarp.move(desired_outputs);
+    }
 }
 
   const robot_joints_output& valve_yarp::controlLaw (const robot_state_input& inputs, unsigned long int RTtime )
