@@ -21,7 +21,7 @@ using namespace arma;
 // **************************EXTRA INCLUDES************************************
 
 // *************************ALL GLOBAL VARIABLES*******************************
-static const std::vector<float> homeVel(25,25);
+static const std::vector<float> homeVel(15,15);
 
 static const std::vector<float> homePos = {
     // lower body #15
@@ -37,18 +37,25 @@ std::vector<int> two_arms = {16, 17, 18 ,19, 26, 27, 28, 32,
 std::vector<int> two_arms_nohands = {16, 17, 18 ,19, 26, 27, 28,
                                      20, 21, 22, 23, 29, 30, 31};
 
+////////////////////////
+// LPF TEST
+///////////////////////
+double lamda = 80.0;
+vec qf_l(8), qf_l_old(8);
+
+
 //For kinematics
 ManipulationVars::ManipulationVars() :
-        jacob_right(6, 8), jacob_left(6, 8), jacob_R(6, 16), jacob_R_1(3,16), jacob_R_2(3,16), zeros6b8(6,8),
+        jacob_right(6, 8), jacob_left(6, 8), jacob_R(6, 16), jacob_R_1(3,16), jacob_R_2(3,16), zeros6b8(6,8), jacob_R_resized(6, 14),
         fkin_or_left(3,3), fkin_or_right(3,3), fkin_po_left(3,1), fkin_po_right(3,1),
-        I_16(16,16), I_8(8,8), I_6(6,6), obj_R_G(3,3), o_R_A(3,3), o_R_B(3,3),
+        I_16(16,16),I_14(14,14), I_8(8,8), I_6(6,6), obj_R_G(3,3), o_R_A(3,3), o_R_B(3,3),
         o_base(3,1), o_r_A(3,1), o_r_B(3,1), obj_r_G(3,1),
         A_R_hat_BA(3,3), A_R_hat_T(3,3), A_R_hat_G(3,3), J_11(3,8), J_12(3,8), J_21(3,8), J_22(3,8),
-        J_p_L(3,8), J_p_R(3,8), J_o_L(3,8), J_o_R(3,8),
-        Theta_0_R(8), Theta_0_L(8), q_l(16), q_dot(16), tau(14), C_vel(6), q_ref(16), q_h(16), delta_q(16), delta_q_sum(16), null_vel(16), obj_r_T(3), obj_w_T(3),
+        J_p_L(3,8), J_p_R(3,8), J_o_L(3,8), J_o_R(3,8), joint_error_ar(16),
+        Theta_0_R(8), Theta_0_L(8), q_l(16), q_l_resized(14), q_dot(16), tau(14), C_vel(6), q_ref(16), q_h(16), delta_q(16), delta_q_sum(16), null_vel(14), obj_r_T(3), obj_w_T(3),
         lambda_dot_jntlmt_r(8),lambda_dot_jntlmt_l(8), lambda_dot_jntlmt(16), q_max_r(8), q_min_r(8), q_bar_r(8), q_max_l(8), q_min_l(8), q_bar_l(8),
         Qr(4), Ql(4), Qi_r(4), Qi_l(4), Qd_r(4), Qd_l(4), Eo_r(3), Eo_l(3),
-        Xi_R(6), Xi_L(6),
+        Xi_R(6), Xi_L(6),orient_e_R(3),
         dXd_D(6), Xd_D(6),
         Xd_R(6), Xd_L(6),
         dXd_R(6), dXd_L(6),
@@ -56,7 +63,7 @@ ManipulationVars::ManipulationVars() :
 
         K_inv   = 0.001;     //Tuned (0.02* 0.05)
         K_clik  = 1.5;       //Tuned
-        K_null  = 0.001;     //not tuned
+        K_null  = 0.01;     //not tuned
         L0=0.15154; L1=0.1375; L2=0.19468; a3=0.005; Le=0.010;
         S1=0;S2=0;S3=0;S4=0;S5=0;S6=0;S7=0;S8=0;S9=0;S10=0;S11=0;S12=0;S13=0;S14=0;S15=0;S16=0;
         C1=0;C2=0;C3=0;C4=0;C5=0;C6=0;C7=0;C8=0;C9=0;C10=0;C11=0;C12=0;C13=0;C14=0;C15=0;C16=0;
@@ -66,6 +73,9 @@ ManipulationVars::ManipulationVars() :
         safety_flag=0, jntlmt_flag=0;
         count_loop_1=0, hand_flag_control_r=0, hand_flag_control_l=0;
         flag_init_hands = false;
+        flag_init_pushing = false;
+        flag_init_movingfar=false;
+        init_rot_po = false;
     }
 
 void ManipulationVars::manip_kine()
@@ -73,6 +83,7 @@ void ManipulationVars::manip_kine()
     int bId;
 
     I_16.eye();
+    I_14.eye();
     I_8.eye();
     I_6.eye();
     obj_R_G.eye();
@@ -83,6 +94,7 @@ void ManipulationVars::manip_kine()
     o_r_B.zeros();
     obj_r_G.zeros();
     zeros6b8.zeros();
+    orient_e_R.zeros();
 
     q_max_r <<195*M_PI/180.0 <<endr
             <<170*M_PI/180.0 <<endr
@@ -103,7 +115,8 @@ void ManipulationVars::manip_kine()
             <<-90*M_PI/180.0 <<endr;
 
     q_bar_r = 0.5*(q_max_r + q_min_r);
-    q_bar_r(6) = 5.0*M_PI/180.0;    //wrist
+    q_bar_r(6) = 0.0*M_PI/180.0;    //wrist
+    //q_bar_r(5) = -10.0*M_PI/180.0;    //wrist
 
     q_max_l <<95*M_PI/180.0 <<endr
             <<18*M_PI/180.0 <<endr
@@ -124,7 +137,8 @@ void ManipulationVars::manip_kine()
             <<-90*M_PI/180.0 <<endr;
 
     q_bar_l = 0.5*(q_max_l + q_min_l);
-    q_bar_l(6) = -5.0*M_PI/180.0;
+    q_bar_l(6) = 0.0*M_PI/180.0;
+    //q_bar_l(5) = -10.0*M_PI/180.0;
 
     S1=sin(q_l(0) - M_PI/2.0);
     S2=sin(q_l(1));
@@ -224,7 +238,7 @@ void ManipulationVars::manip_kine()
      <<0<< S9*(a3*(C9*S11 - C10*C11*S9) - L2*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) + Le*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11))) - L1*S9*S10) - C9*(a3*(S9*S11 + C9*C10*C11) - L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) + Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))) + L1*C9*S10)<< S9*S10*(a3*(S9*S11 + C9*C10*C11) - L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) + Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))) + C9*S10*(a3*(C9*S11 - C10*C11*S9) - L2*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) + Le*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11))))<< (C11*S9 - C9*C10*S11)*(L2*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - Le*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11)))) - (C9*C11 + C10*S9*S11)*(L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))))<< Le*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10)*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))) - Le*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11)))*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10)<< Le*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11))) - Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11))<< Le*(C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) + S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11)))*(C15*(S14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - C14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))) - S15*(S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) - C13*(C9*C11 + C10*S9*S11))) - Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))*(C14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) + S14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11)))<< 0<<endr
      <<L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - a3*(S9*S11 + C9*C10*C11) - Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))) - L1*C9*S10<< -S9*(L2*(C10*C12 + C11*S10*S12) + L1*C10 - Le*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12))) - a3*C11*S10)<< C10*(a3*(S9*S11 + C9*C10*C11) - L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) + Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))) + C9*S10*(Le*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12))) - L2*(C10*C12 + C11*S10*S12) + a3*C11*S10)<< (L2*(C10*C12 + C11*S10*S12) - Le*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12))))*(C11*S9 - C9*C10*S11) + S10*S11*(L2*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11))))<< Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))*(C10*C12 + C11*S10*S12) - Le*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12)))*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10)<< Le*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12)))*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)) + Le*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11)*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))<< Le*(C15*(S14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - C14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))) - S15*(S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) - C13*(C11*S9 - C9*C10*S11)))*(S14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) - C14*(C10*C12 + C11*S10*S12)) + Le*(C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) + S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11)))*(S15*(S13*(C10*S12 - C11*C12*S10) - C13*S10*S11) + C15*(C14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13) + S14*(C10*C12 + C11*S10*S12)))<< 0<<endr;
 
-    J_o_L<<0<< -S9<< -C9*S10<< C11*S9 - C9*C10*S11<< S12*(S9*S11 + C9*C10*C11) - C9*C12*S10<< C13*(C11*S9 - C9*C10*S11) - S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12)<< - C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))<< - C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))<<endr
+    J_p_L<<0<< -S9<< -C9*S10<< C11*S9 - C9*C10*S11<< S12*(S9*S11 + C9*C10*C11) - C9*C12*S10<< C13*(C11*S9 - C9*C10*S11) - S13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12)<< - C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))<< - C14*(S12*(S9*S11 + C9*C10*C11) - C9*C12*S10) - S14*(C13*(C12*(S9*S11 + C9*C10*C11) + C9*S10*S12) + S13*(C11*S9 - C9*C10*S11))<<endr
      <<1<< 0<< -C10<< S10*S11<< - C10*C12 - C11*S10*S12<< C13*S10*S11 - S13*(C10*S12 - C11*C12*S10)<< C14*(C10*C12 + C11*S10*S12) - S14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13)<< C14*(C10*C12 + C11*S10*S12) - S14*(C13*(C10*S12 - C11*C12*S10) + S10*S11*S13)<<endr
      <<0<< -C9<< S9*S10<< C9*C11 + C10*S9*S11<< S12*(C9*S11 - C10*C11*S9) + C12*S9*S10<< C13*(C9*C11 + C10*S9*S11) - S13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12)<< - C14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - S14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))<< - C14*(S12*(C9*S11 - C10*C11*S9) + C12*S9*S10) - S14*(C13*(C12*(C9*S11 - C10*C11*S9) - S9*S10*S12) + S13*(C9*C11 + C10*S9*S11))<<endr;
 
@@ -237,14 +251,16 @@ void ManipulationVars::manip_kine()
      <<1<< 0<< C2<< S2*S3<< C2*C4 - C3*S2*S4<< S5*(C2*S4 + C3*C4*S2) + C5*S2*S3<< S6*(C5*(C2*S4 + C3*C4*S2) - S2*S3*S5) - C6*(C2*C4 - C3*S2*S4)<< S6*(C5*(C2*S4 + C3*C4*S2) - S2*S3*S5) - C6*(C2*C4 - C3*S2*S4)<<endr
      <<0<< -C1<< -S1*S2<< C2*S1*S3 - C1*C3<< - S4*(C1*S3 + C2*C3*S1) - C4*S1*S2<< S5*(C4*(C1*S3 + C2*C3*S1) - S1*S2*S4) - C5*(C1*C3 - C2*S1*S3)<< C6*(S4*(C1*S3 + C2*C3*S1) + C4*S1*S2) + S6*(C5*(C4*(C1*S3 + C2*C3*S1) - S1*S2*S4) + S5*(C1*C3 - C2*S1*S3))<< C6*(S4*(C1*S3 + C2*C3*S1) + C4*S1*S2) + S6*(C5*(C4*(C1*S3 + C2*C3*S1) - S1*S2*S4) + S5*(C1*C3 - C2*S1*S3))<<endr;
 
-
-
     //-------RELATIVE KINEMATICS
 
     //calcSkew(fkin_or_right.t() * o_R_A.t() * (o_r_B - o_r_A), A_R_hat_BA);
+    //A_R_hat_BA=-1*A_R_hat_BA;
+
     A_R_hat_BA.zeros();
     calcSkew(fkin_or_right.t() * o_R_A.t() * o_R_B * fkin_po_left, A_R_hat_T);
+    A_R_hat_T=-1*A_R_hat_T;
     calcSkew(fkin_or_right.t() * fkin_po_right, A_R_hat_G);
+    A_R_hat_G=-1*A_R_hat_G;
 
     J_11=-obj_R_G * (fkin_or_right.t() * J_p_R + A_R_hat_BA * fkin_or_right.t() * J_o_R + A_R_hat_T * fkin_or_right.t() * J_o_R - A_R_hat_G * fkin_or_right.t() * J_o_R);
     J_12= obj_R_G * fkin_or_right.t() *  o_R_A.t() * o_R_B * J_p_L;
@@ -256,13 +272,20 @@ void ManipulationVars::manip_kine()
 
     jacob_R=join_cols(jacob_R_1,jacob_R_2);
 
+    jacob_R_resized.cols(0,6)=jacob_R.cols(0,6);
+    jacob_R_resized.cols(7,13)=jacob_R.cols(8,14);
+
     obj_r_T=obj_R_G * fkin_or_right.t() * o_R_A.t() * (o_r_B - o_r_A  + o_R_B * fkin_po_left) - obj_R_G * fkin_or_right.t() * fkin_po_right + obj_r_G;
-    obj_w_T=obj_R_G * fkin_or_right.t() *(o_R_A.t() * o_R_B * J_o_L *delta_q.rows(8,15)  -  J_o_R * delta_q.rows(0,7));
+    //obj_w_T=obj_R_G * fkin_or_right.t() *(o_R_A.t() * o_R_B * J_o_L *delta_q.rows(8,15)  -  J_o_R * delta_q.rows(0,7));
+    obj_w_T=obj_R_G * fkin_or_right.t() *(o_R_A.t() * o_R_B * J_o_L *q_dot.rows(8,15)  -  J_o_R * q_dot.rows(0,7));
 
-    /*pinv_jacob_right=pinv(jacob_right);
+    pinv_jacob_right=pinv(jacob_right);
     pinv_jacob_left=pinv(jacob_left);
-    pinv_jacob_R=pinv(jacob_R);*/
+    pinv_jacob_R=pinv(jacob_R);
 
+    orient_e_R=orient_e_R+obj_w_T;
+
+    /*A_R_hat_G
     if (det(jacob_right*jacob_right.t())>0.001)
         pinv_jacob_right=pinv(jacob_right);
     else
@@ -277,12 +300,16 @@ void ManipulationVars::manip_kine()
         pinv_jacob_R=pinv(jacob_R);
     else
         pinv_jacob_R=jacob_R.t() * inv(jacob_R*jacob_R.t() + 0.001*I_6);
+    */
 
     //   START: PRIRORITY KINEMATICS
-    Js_1=join_rows(jacob_right,zeros6b8);
-    Js_2 = jacob_R;
+    //Js_1=join_rows(jacob_right,zeros6b8);
+    //Js_2 = jacob_R;
 
-     if (det(Js_1*Js_1.t())>0.001)
+    Js_1 = jacob_R;
+    Js_2 = join_rows(jacob_right,zeros6b8);
+
+     if (det(Js_1*Js_1.t())>0.0000001)
          pinv_Js_1=pinv(Js_1);
      else
         pinv_Js_1=Js_1.t() * inv(Js_1*Js_1.t() + 0.001*I_6);
@@ -290,7 +317,7 @@ void ManipulationVars::manip_kine()
 
      Jhat_2=Js_2*(I_16- pinv_Js_1*Js_1);
 
-     if (det(Jhat_2*Jhat_2.t())>0.001)
+     if (det(Jhat_2*Jhat_2.t())>0.0000001)
         pinv_Jhat_2=pinv(Jhat_2);
      else
         pinv_Jhat_2=Jhat_2.t() * inv(Jhat_2*Jhat_2.t() + 0.001*I_6);
@@ -307,9 +334,7 @@ void ManipulationVars::manip_kine()
      RotQuaternion(fkin_or_left, Ql);
 
      //relative pos/ori
-     X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
-
-
+     X_D<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<orient_e_R(0)<<orient_e_R(1)<<orient_e_R(2);
 }
 
 void ManipulationVars::reaching(u_int64_t dt_ns){
@@ -321,21 +346,23 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
     if(flag_init_hands == false){
         //t_traj_start = get_time_ns();
         Xi_R<<fkin_po_right(0)<<fkin_po_right(1)<<fkin_po_right(2)<<0.0<<0.0<<0.0;
-        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;                
         flag_init_hands = true;
         Xd_R = Xi_R;
         Xd_L = Xi_L;
 
-        Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
-
+        RotQuaternion(fkin_or_right, Qi_r);
+        RotQuaternion(fkin_or_left, Qi_l);
+        Qd_r = Qi_r;
+        Qd_l = Qi_l;
     }
 
         //Get valve position/orientation
         //vec Xv(6);
         //vec Xv = get_valve_data();
         vec Xv(6);
-        Xv<<0.25<<0.0<<-0.10<<M_PI<<0.0<<0.0;
-        mat ROTv(3,3);
+        Xv<<0.25<<0.0<<0.0<<M_PI<<0.0<<0.0;
+        mat ROTv(3,3), deltaR_R(3,3), deltaR_L(3,3), L_rot_R, L_rot_L;
         vec Qv(4);
         //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
         ROTv<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
@@ -344,6 +371,9 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         //Quaternion for valve orientation
         RotQuaternion(ROTv, Qv);
 
+        deltaR_R=ROTv* fkin_or_right.t();
+        deltaR_L=ROTv* fkin_or_left.t();
+
         //Get valve radius
         //double Rv = get_radius();
         double Rv=0.1;
@@ -351,14 +381,15 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         //Calculate target position for two hands
         vec Xt_R(6), Xt_L(6);
         double Roff = 0.05;     //offset, 5cm
-        Xt_R=Xv;    Xt_R(1)=Xv(1) - Rv-Roff;
-        Xt_L=Xv;    Xt_L(1)=Xv(1) + Rv+Roff;  
+
+        Xt_R=Xv;    Xt_R(1)=Xv(1) - Rv - Roff;
+        Xt_L=Xv;    Xt_L(1)=Xv(1) + Rv + Roff;
 
 
         //displacement: target - init
         //TEST:
-        //Xf_R<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
-        //Xf_L<<0.10<<0.0<<0.30<<0.0<<0.0<<0.0;
+        //Xf_R<<0.10<<-0.10<<0.10<<0.0<<0.0<<0.0;
+        //Xf_L<<0.10<< 0.10<<0.10<<0.0<<0.0<<0.0;
         Xf_R = Xt_R - Xi_R;
         Xf_L = Xt_L - Xi_L;
 
@@ -374,62 +405,363 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         Xfq_R = Qv - Qi_r;
         Xfq_L = Qv - Qi_l;
 
-        line_traj(Qi_r, Xfq_R, 5.0, (dt_ns/1e9), Qd_r, dQd_r);
-        line_traj(Qi_l, Xfq_L, 5.0, (dt_ns/1e9), Qd_l, dQd_l);
+        line_traj(Qi_r, Xfq_R, 2.0, (dt_ns/1e9), Qd_r, dQd_r);
+        line_traj(Qi_l, Xfq_L, 2.0, (dt_ns/1e9), Qd_l, dQd_l);
 
         //Orientation Error
-        //vec Eo_r(3), Eo_l(3);
-        OrientationError(Qd_r, Qr, Eo_r);
-        OrientationError(Qd_l, Ql, Eo_l);
+        Eo_r.zeros();
+        Eo_l.zeros();
+        //OrientationError(Qd_r, Qr, Eo_r);
+        //OrientationError(Qd_l, Ql, Eo_l);
+
+       // RotQuaternion(deltaR_R, Eo_r);
+       // RotQuaternion(deltaR_L, Eo_l);
+
+        mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
+        vec n_e, s_e, a_e, n_d, s_d, a_d;
+
+        n_d=ROTv.col(0);
+        s_d=ROTv.col(1);
+        a_d=ROTv.col(2);
+
+        calcSkew(n_d, Sn_d);
+        calcSkew(s_d, Ss_d);
+        calcSkew(a_d, Sa_d);
+
+
+        n_e=fkin_or_right.col(0);
+        s_e=fkin_or_right.col(1);
+        a_e=fkin_or_right.col(2);
+
+        calcSkew(n_e, Sn_e);
+        calcSkew(s_e, Ss_e);
+        calcSkew(a_e, Sa_e);
+        L_rot_R=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+        Eo_r=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+
+        n_e=fkin_or_left.col(0);
+        s_e=fkin_or_left.col(1);
+        a_e=fkin_or_left.col(2);
+
+        calcSkew(n_e, Sn_e);
+        calcSkew(s_e, Ss_e);
+        calcSkew(a_e, Sa_e);
+        L_rot_L=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+        Eo_l=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
 
         //IK solution: CLICK
         vec V_R(6), V_L(6);
 
         V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-        V_R.subvec(3,5) = 10.0*K_clik*Eo_r;
+        V_R.subvec(3,5) =  1 * Eo_r;
 
-        V_L.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-        V_L.subvec(3,5) = 10.0*K_clik*Eo_l;
+        V_L.subvec(0,2) = dXd_L.subvec(0,2) + K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
+        //V_L.subvec(3,5) = 0.5*K_clik*Eo_l;
+        V_L.subvec(3,5) =  1 * Eo_l;
 
-        delta_q.rows(0,7)= K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-        delta_q.rows(8,15)= K_inv* pinv_jacob_left*V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
+        delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
 
         //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
-        // delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        //delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
 
          //if(norm((Xd_L - X_L),"fro") > 0.01)//Left arm (TODO)
-        // delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+        //delta_q.rows(8,15)= K_inv* pinv_jacob_left* (dXd_L + K_clik*(Xd_L - X_L) ) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
 
 }
 
 void ManipulationVars::pushing(u_int64_t dt_ns){
 
+    double Roff = 0.05;     //offset, 5cm
+    mat ROTv(3,3), L_rot_R, L_rot_L;
+
+    if(flag_init_pushing == false){
+        //t_traj_start = get_time_ns();
+        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)+ Roff<<fkin_po_right(2)<<0.0<<0.0<<0.0;
+        Xd_L<<fkin_po_left(0)<<fkin_po_left(1) - Roff<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        flag_init_pushing = true;
+
+    }
+
+    vec Xv(6);
+    Xv<<0.0<<0.0<<0.0<<M_PI<<0.0<<0.0;
+
+    //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
+    ROTv<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
+        << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
+        << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
+
+    //Orientation Error
+    Eo_r.zeros();
+    Eo_l.zeros();
+
+
+    mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
+    vec n_e, s_e, a_e, n_d, s_d, a_d;
+
+    n_d=ROTv.col(0);
+    s_d=ROTv.col(1);
+    a_d=ROTv.col(2);
+
+    calcSkew(n_d, Sn_d);
+    calcSkew(s_d, Ss_d);
+    calcSkew(a_d, Sa_d);
+
+
+    n_e=fkin_or_right.col(0);
+    s_e=fkin_or_right.col(1);
+    a_e=fkin_or_right.col(2);
+
+    calcSkew(n_e, Sn_e);
+    calcSkew(s_e, Ss_e);
+    calcSkew(a_e, Sa_e);
+    L_rot_R=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+    Eo_r=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+
+    n_e=fkin_or_left.col(0);
+    s_e=fkin_or_left.col(1);
+    a_e=fkin_or_left.col(2);
+
+    calcSkew(n_e, Sn_e);
+    calcSkew(s_e, Ss_e);
+    calcSkew(a_e, Sa_e);
+    L_rot_L=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+    Eo_l=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+
+    //IK solution: CLICK
+    vec V_R(6), V_L(6);
+
+    V_R.subvec(0,2) =  K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+    V_R.subvec(3,5) =  1 * Eo_r;
+
+    V_L.subvec(0,2) =  K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
+    V_L.subvec(3,5) =  1 * Eo_l;
+
+
+        delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
 }
+
 
 void ManipulationVars::movingfar(u_int64_t dt_ns){
 
+    if(flag_init_movingfar == false){
+        //t_traj_start = get_time_ns();
+        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)-0.15<<fkin_po_right(2)+0.15<<0.0<<0.0<<0.0;
+        Xd_L<<fkin_po_left(0)<<fkin_po_left(1)+0.15<<fkin_po_left(2)-0.15<<0.0<<0.0<<0.0;
+        flag_init_movingfar = true;
+
+    }
+
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*(Xd_R - X_R) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left *(Xd_L - X_L) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
 }
+
 
 void ManipulationVars::rotating(u_int64_t dt_ns){
 
+    mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
+    vec n_e, s_e, a_e, n_d, s_d, a_d;
+    vec Xv(6);
+    double angle_d_R, angle_d_L;
+    Eo_r.zeros();//Orientation Error
+    mat ROTv_i(3,3), ROTv(3,3), ROTthe_R(3,3), ROTthe_L(3,3), L_rot_R, L_rot_L;
+
+    if(init_rot_po == false){
+        Xi_R << fkin_po_right(0) << fkin_po_right(1) << fkin_po_right(2)<<0.0<<0.0<<0.0;
+        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        init_rot_po = true;
+
+        Xd_R = Xi_R;
+        dXd_R.zeros();
+        Xd_L = Xi_L;
+        dXd_L.zeros();
+
+    }
+
     //right hand trajectory
-    circle_traj( Xi_R, 60.0*M_PI/180.0 , 10.0, (dt_ns/1e9), get_radius(), Xd_R, dXd_R);
-    //relative pos/ori trajectory
-    Xd_D = Xd_D_init; dXd_D.zeros();
+    angle_d_R = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
+    angle_d_L = circle_traj( Xi_L, 45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_L, dXd_L);
 
-    //Right arm
-    delta_q.rows(0,7)= K_inv* pinv_jacob_right* (dXd_R + K_clik*(Xd_R - X_R) ) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
 
-    //relative motion
-    delta_q = K_inv * pinv_Js_1 * (dXd_R + K_clik * (Xd_R - X_R)) + pinv_Jhat_2 * (dXd_D + K_clik * (Xd_D-X_D) - Js_2 * pinv_Js_1 * (dXd_R + K_clik * (Xd_R - X_R)));
+    Xv<<0<<0<<0<<M_PI<<0<<0;
+    //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
+    ROTv_i<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
+        << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
+        << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
 
-    //Relative between two-arms
-    //delta_q= 0.2* pinv_jacob_R* C_vel- 0.00001 * (I_16 - pinv_jacob_R*jacob_R)*(-lambda_dot_jntlmt);
+
+    //RIGHT ARM
+    ROTthe_R <<1<<0<<0<<endr
+             <<0<<cos(angle_d_R)<<-sin(angle_d_R)<<endr
+             <<0<<sin(angle_d_R)<<cos(angle_d_R)<<endr;
+
+    ROTv=ROTv_i * ROTthe_R;
+
+    n_d=ROTv.col(0);
+    s_d=ROTv.col(1);
+    a_d=ROTv.col(2);
+
+    calcSkew(n_d, Sn_d);
+    calcSkew(s_d, Ss_d);
+    calcSkew(a_d, Sa_d);
+
+    n_e=fkin_or_right.col(0);
+    s_e=fkin_or_right.col(1);
+    a_e=fkin_or_right.col(2);
+
+    calcSkew(n_e, Sn_e);
+    calcSkew(s_e, Ss_e);
+    calcSkew(a_e, Sa_e);
+
+    L_rot_R=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+    Eo_r=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+
+    //LEFT ARM
+    ROTthe_L <<1<<0<<0<<endr
+             <<0<<cos(angle_d_L)<<-sin(angle_d_L)<<endr
+             <<0<<sin(angle_d_L)<<cos(angle_d_L)<<endr;
+
+    ROTv=ROTv_i * ROTthe_L;
+
+    n_d=ROTv.col(0);
+    s_d=ROTv.col(1);
+    a_d=ROTv.col(2);
+
+    calcSkew(n_d, Sn_d);
+    calcSkew(s_d, Ss_d);
+    calcSkew(a_d, Sa_d);
+
+    n_e=fkin_or_left.col(0);
+    s_e=fkin_or_left.col(1);
+    a_e=fkin_or_left.col(2);
+
+    calcSkew(n_e, Sn_e);
+    calcSkew(s_e, Ss_e);
+    calcSkew(a_e, Sa_e);
+
+    L_rot_L=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+    Eo_l=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+    //IK solution: CLICK
+    vec V_R(6), V_L(6);
+
+    V_R.subvec(0,2) =  K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+    V_R.subvec(3,5) =  1 * Eo_r;
+
+    V_L.subvec(0,2) =  K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
+    V_L.subvec(3,5) =  1 * Eo_l;
+
+
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
 }
 
+/*void ManipulationVars::rotating(u_int64_t dt_ns){
+
+    mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
+    vec n_e, s_e, a_e, n_d, s_d, a_d;
+    vec Xv(6);
+    double angle_d;
+    Eo_r.zeros();//Orientation Error
+    mat ROTv_i(3,3), ROTv(3,3), ROTthe(3,3), L_rot_R;
+
+    if(init_rot_po == false){
+        Xi_R << fkin_po_right(0) << fkin_po_right(1) << fkin_po_right(2)<<0.0<<0.0<<0.0;
+        Xi_L<<fkin_po_left(0)<<fkin_po_left(1)<<fkin_po_left(2)<<0.0<<0.0<<0.0;
+        init_rot_po = true;
+        Xd_R = Xi_R;
+        dXd_R.zeros();
+
+        Xd_D_init<<obj_r_T(0)<<obj_r_T(1)<<obj_r_T(2)<<0.0<<0.0<<0.0;
+
+       //cout<<dt_ns/1e9<<endl;
+
+    }
+
+    //right hand trajectory
+    //angle_d = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), get_radius(), Xd_R, dXd_R);
+    angle_d = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
+    //relative pos/ori trajectory
+    Xd_D = Xd_D_init; dXd_D.zeros();
+
+
+    Xv<<0<<0<<0<<M_PI<<0<<0;
+    //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
+    ROTv_i<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
+        << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
+        << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
+
+    ROTthe <<1<<0<<0<<endr
+           <<0<<cos(angle_d)<<-sin(angle_d)<<endr
+           <<0<<sin(angle_d)<<cos(angle_d)<<endr;
+
+    ROTv=ROTv_i * ROTthe;
+
+    n_d=ROTv.col(0);
+    s_d=ROTv.col(1);
+    a_d=ROTv.col(2);
+
+
+    calcSkew(n_d, Sn_d);
+    calcSkew(s_d, Ss_d);
+    calcSkew(a_d, Sa_d);
+
+
+    n_e=fkin_or_right.col(0);
+    s_e=fkin_or_right.col(1);
+    a_e=fkin_or_right.col(2);
+
+    calcSkew(n_e, Sn_e);
+    calcSkew(s_e, Ss_e);
+    calcSkew(a_e, Sa_e);
+
+    L_rot_R=-0.5*(Sn_d*Sn_e + Ss_d*Ss_e + Sa_d*Sa_e);
+    Eo_r=0.5*(cross(n_e,n_d) + cross(s_e,s_d) + cross(a_e,a_d));
+
+    //IK solution: CLICK
+    vec V_R(6);
+    V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
+    V_R.subvec(3,5) =  Eo_r;
+
+
+    //relative motion
+    //delta_q = K_inv * pinv_Js_1 * V_R + K_inv * pinv_Jhat_2 * (dXd_D + K_clik * (Xd_D-X_D) - Js_2 * pinv_Js_1 * V_R);// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
+
+    delta_q = K_inv * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)) + K_inv * pinv_Jhat_2 * (V_R - Js_2 * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)));// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
+
+    //delta_q_cds=delta_t_cds*(pinv_Js_1*(x_dot_1 + k_lim*(x_1_d-x_1_r)) + pinv_Jhat_2*(x_dot_2 + k_lim*(x_2_d-x_2_r) - Js_2*pinv_Js_1*(x_dot_1+ k_lim*(x_1_d-x_1_r))) + (Ident.eye()-pinv_Js_1*Js_1)*(Ident.eye()-pinv_Jhat_2*Jhat_2)*lambda_dot*null_control);
+
+    //delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+    //delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+
+    //Relative between two-arms
+
+   // delta_q= K_inv* pinv_jacob_R* (Xd_D-X_D);
+    //delta_q= - 0.00005* (I_16 - pinv(jacob_R)*jacob_R)*null_vel;
+
+
+    //vec delta_q_resized;
+    //delta_q_resized= - 0.00005* (I_14 - pinv(jacob_R_resized)*jacob_R_resized)*null_vel;
+
+    //delta_q.rows(0,6)=delta_q_resized.rows(0,6);
+    //delta_q.rows(8,14)=delta_q_resized.rows(7,13);
+
+   // delta_q(14)=  delta_q(14) - 0.0000001;
+    //delta_q.rows(8,15)= -100 * K_inv* pinv_jacob_left*C_vel;
+
+}
+*/
 hand_pos ManipulationVars::grasping(){
 
     //right hand
@@ -441,7 +773,7 @@ hand_pos ManipulationVars::grasping(){
     //left hand
     if ((q_ref(15) < 1.3))
     {
-        q_ref(15) =q_ref(15) + 0.0005;
+        q_ref(15) =q_ref(15) + 0.000;
     }
 
     hand_pos temp;
@@ -550,11 +882,11 @@ Boards_ctrl_basic::~Boards_ctrl_basic() {
     for (boost::circular_buffer<log_user_t>::iterator it=log_user_buff_Cart.begin(); it!=log_user_buff_Cart.end(); it++) {
         log_file << boost::format("%1%\t") % (*it).ts;          //1
 
-        log_file << boost::format("%1%\t") % (*it).CartXd_R;     //2
+        log_file << boost::format("%1%\t") % (*it).CartXd_R;     //2     //currently, it is Eo_r
         log_file << boost::format("%1%\t") % (*it).CartYd_R;
         log_file << boost::format("%1%\t") % (*it).CartZd_R;
 
-        log_file << boost::format("%1%\t") % (*it).CartXd_L;     //5
+        log_file << boost::format("%1%\t") % (*it).CartXd_L;     //5     //currently, it is Eo_l
         log_file << boost::format("%1%\t") % (*it).CartYd_L;
         log_file << boost::format("%1%\t") % (*it).CartZd_L;
 
@@ -565,6 +897,7 @@ Boards_ctrl_basic::~Boards_ctrl_basic() {
         log_file << boost::format("%1%\t") % (*it).CartX_L;     //11
         log_file << boost::format("%1%\t") % (*it).CartY_L;
         log_file << boost::format("%1%\t") % (*it).CartZ_L;
+
 
         log_file << boost::format("%1%\t") % (*it).rel_x;       //14
         log_file << boost::format("%1%\t") % (*it).rel_y;
@@ -628,7 +961,7 @@ void ManipulationVars::init_manip(vec _q_l)
     C_vel.zeros();
     null_vel.ones();
 
-    C_vel(2)= 0.0001;
+    C_vel(1)= 0.0001;
 
     flag_run_once = true;
 
@@ -656,9 +989,22 @@ void Boards_ctrl_basic::th_loop(void * ) {
         }
 
 
-        if(flag_run_once == false)
+        if(flag_run_once == false){
             init_manip(q_l);
 
+            /////////////LPF TEST
+            qf_l = q_l;
+            qf_l_old = q_l;
+        }
+
+
+        qf_l = (lamda*0.001*q_l + qf_l_old)/(1.0+0.001*lamda);
+        qf_l_old = qf_l;
+        q_l.subvec(4,6) = qf_l.subvec(4,6);     //LPF activated
+        q_l.subvec(12,14) = qf_l.subvec(12,14);
+
+        q_l_resized.rows(0,6) = q_l.rows(0,6);
+        q_l_resized.rows(7,13) = q_l.rows(8,14);
 
         bzero((void*)console_buffer, sizeof(console_buffer));
         user_input(console_buffer, sizeof(console_buffer));
@@ -684,33 +1030,47 @@ void Boards_ctrl_basic::th_loop(void * ) {
 
     // log user data
     tmp_log_Cart.ts = get_time_ns();//(get_time_ns() - g_tStart);
-    tmp_log_Cart.CartXd_R = Xd_R(0);    tmp_log_Cart.CartYd_R = Xd_R(1);    tmp_log_Cart.CartZd_R = Xd_R(2);
-    tmp_log_Cart.CartXd_L = Xd_L(0);    tmp_log_Cart.CartYd_L = Xd_L(1);    tmp_log_Cart.CartZd_L = Xd_L(2);
 
-    //tmp_log_Cart.CartX_R = dXd_R(0);
-    //tmp_log_Cart.CartY_R = dXd_R(1);
-    //tmp_log_Cart.CartZ_R = dXd_R(2);
+    tmp_log_Cart.CartXd_R =  X_D(0);
+    tmp_log_Cart.CartYd_R =  X_D(1);
+    tmp_log_Cart.CartZd_R =  X_D(2);
 
-    //tmp_log_Cart.CartX_L = dXd_L(0);
-    //tmp_log_Cart.CartY_L = dXd_L(1);
-    //tmp_log_Cart.CartZ_L = dXd_L(2);
+    tmp_log_Cart.CartXd_L =  X_D(3);
+    tmp_log_Cart.CartYd_L =  X_D(4);
+    tmp_log_Cart.CartZd_L =  X_D(5);
 
-    tmp_log_Cart.CartX_R = fkin_po_right(0);
-    tmp_log_Cart.CartY_R = fkin_po_right(1);
-    tmp_log_Cart.CartZ_R = fkin_po_right(2);
-
-    tmp_log_Cart.CartX_L = fkin_po_left(0);
-    tmp_log_Cart.CartY_L = fkin_po_left(1);
-    tmp_log_Cart.CartZ_L = fkin_po_left(2);
+    tmp_log_Cart.CartX_R  = Xd_D(0);
+    tmp_log_Cart.CartY_R  = Xd_D(1);
+    tmp_log_Cart.CartZ_L = Xd_D(2);
 
 
-    tmp_log_Cart.rel_x = obj_r_T(0);    tmp_log_Cart.rel_y = obj_r_T(1);    tmp_log_Cart.rel_z = obj_r_T(2);
+    tmp_log_Cart.rel_x   = Xd_D(3);
+    tmp_log_Cart.rel_y   = Xd_D(4);
+    tmp_log_Cart.rel_z   = Xd_D(5);
 
+    //tmp_log_Cart.CartXd_R = Xd_R(0);    tmp_log_Cart.CartYd_R = Xd_R(1);    tmp_log_Cart.CartZd_R = Xd_R(2);
+    //tmp_log_Cart.CartXd_L = Xd_L(0);    tmp_log_Cart.CartYd_L = Xd_L(1);    tmp_log_Cart.CartZd_L = Xd_L(2);
+
+    //tmp_log_Cart.CartXd_R = Eo_r(0);    tmp_log_Cart.CartYd_R = Eo_r(1);    tmp_log_Cart.CartZd_R = Eo_r(2);
+    //tmp_log_Cart.CartXd_L = Eo_l(0);    tmp_log_Cart.CartYd_L = Eo_l(1);    tmp_log_Cart.CartZd_L = Eo_l(2);
+
+    //tmp_log_Cart.CartX_R = fkin_po_right(0);
+    //tmp_log_Cart.CartY_R = fkin_po_right(1);
+    //tmp_log_Cart.CartZ_R = fkin_po_right(2);
+
+    //tmp_log_Cart.CartX_L = fkin_po_left(0);
+    //tmp_log_Cart.CartY_L = fkin_po_left(1);
+    //tmp_log_Cart.CartZ_L = fkin_po_left(2);
+
+
+    //tmp_log_Cart.rel_x = obj_r_T(0);    tmp_log_Cart.rel_y = obj_r_T(1);    tmp_log_Cart.rel_z = obj_r_T(2);
+    //tmp_log_Cart.rel_x = Eo_r(0);    tmp_log_Cart.rel_y = Eo_r(1);    tmp_log_Cart.rel_z = Eo_r(2);
 
     log_user_buff_Cart.push_back(tmp_log_Cart);
 
 
     // log user data
+    /*
     for (int i=0;i<16; i++)
     {
             tmp_log.ts = get_time_ns();//(get_time_ns() - g_tStart);
@@ -719,6 +1079,7 @@ void Boards_ctrl_basic::th_loop(void * ) {
 
             log_user_buff[i].push_back(tmp_log);
     }
+    */
 
 
 }
@@ -741,6 +1102,24 @@ int Boards_ctrl_basic::user_loop(void) {
 
     if (count_loop_1==500)
     {
+
+       // cout<<"traj flag="<<trj_flag<<endl;
+       // cout<<"reach flag="<<reach_flag<<endl;
+       // cout<<"rotation flag="<<valve_rotate_flag<<endl;
+       // cout<<endl;
+               //close_hand_flag
+        //open_hand_flag
+        //(dXd_D.t() + K_clik * (Xd_D.t()-X_D.t())).print();
+
+        //(joint_error_ar.t()).print();
+
+       // cout<< det(jacob_right*jacob_right.t()) <<endl;
+       // (Qr.t()).print("Qr=");
+       // (Ql.t()).print("Ql=");
+        //(180/M_PI*q_l.t()).print("q_l=");
+        //(Eo_l.t()).print("Eo_l=");
+        //(Eo_r.t()).print("Eo_r=");
+      //  cout<<endl;
         /*(Eo_r.t()).print("Eo_r=");
         (Eo_l.t()).print("Eo_l=");
         cout<<endl;*/
@@ -749,11 +1128,11 @@ int Boards_ctrl_basic::user_loop(void) {
         Rfkin.print("Rfkin=");
         (Qd.t()).print("Qd=");
         (Qe.t()).print("Qe=");
+
+
+
         (Orien_Err.t()).print("OErr=");
         cout<<endl;*/
-
-
-        //cout<<delta_q_sum(7)<<endl;
 
         //(round(1000*(obj_r_T.t()))).print();
         //(round((180/M_PI)*((join_cols(q_bar_r,q_bar_l)).t() - q_l.t()))).print();
@@ -770,8 +1149,7 @@ int Boards_ctrl_basic::user_loop(void) {
 
 
             //Reaching-------------------------------------------------------//
-                if ( reach_flag == 1 ) {
-
+                if ( reach_flag == 1 ) {                
                 u_int64_t dt_ns= 0;
                 if ( g_tStart <= 0 ) {
                     g_tStart = get_time_ns();
@@ -784,18 +1162,22 @@ int Boards_ctrl_basic::user_loop(void) {
 
             //GRASPING  ------------------------------------------------------//
                 if ( close_hand_flag == 1 )
+                {
                     hand_delta_q = grasping();
+                }
             //GRASPING  -----------------------------------------------------//
 
             //OPENNING ------------------------------------------------------//
                 if ( open_hand_flag == 1 )
+                {
                     hand_delta_q = openning();
+                }
             //OPENNING ------------------------------------------------------//
 
 
             //ROTATING-------------------------------------------------------//
                 if ( valve_rotate_flag == 1 )
-                {
+                {                    
                     u_int64_t dt_ns= 0;
                     if ( g_tStart <= 0 ) {
                         g_tStart = get_time_ns();
@@ -837,12 +1219,14 @@ int Boards_ctrl_basic::user_loop(void) {
                 for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
                 {
                     _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * delta_q_sum(my_jnt_n);
+
+                    joint_error_ar(my_jnt_n) = _pos[two_arms[my_jnt_n]-1] -(_home[two_arms[my_jnt_n]-1] + 100000.0 * delta_q_sum(my_jnt_n));
                 }
                 _pos[two_arms[7]-1] = 100000.0 * delta_q_sum(7);
                 _pos[two_arms[15]-1] = 100000.0 * delta_q_sum(15);
             //CALCULATE JOINT REFERENCES---------------------------------------//
 
-                testsafety();//Safety for joint limits
+                // testsafety();//Safety for joint limits
 
                    if(safety_flag==0)
                      {
@@ -856,7 +1240,6 @@ int Boards_ctrl_basic::user_loop(void) {
 
     //Trajectrory--- stop the robot movements------------------------//
       }
-
     return 0;
 }
 
@@ -909,34 +1292,64 @@ int Boards_ctrl_basic::user_input(void *buffer, ssize_t buff_size) {
         case 'r':
             DPRINTF("reaching\n");
             reset();
+            push_flag=0;
+            moving_far_flag=0;
+            valve_rotate_flag = 0;
+            flag_init_hands=false;
+            init_rot_po=false;
+            flag_init_pushing=false;
+            flag_init_movingfar=false;
             reach_flag = ! reach_flag;
             break;
 
         case 'p':
             DPRINTF("pushing towards the valve\n");
             reset();
+            valve_rotate_flag = 0;
+            moving_far_flag=0;
+            reach_flag = 0;
+            flag_init_hands=false;
+            init_rot_po=false;
+            flag_init_pushing=false;
+            flag_init_movingfar=false;
             push_flag = ! push_flag;
             break;
 
         case 'o':
             DPRINTF("openning the hand\n");
+            close_hand_flag = 0;
             open_hand_flag = ! open_hand_flag;
         break;
 
         case 'm':
             DPRINTF("moving far from the valve\n");
             reset();
+            reach_flag=0;
+            push_flag=0;
+            valve_rotate_flag=0;
+            flag_init_hands=false;
+            init_rot_po=false;
+            flag_init_pushing=false;
+            flag_init_movingfar=false;
             moving_far_flag = ! moving_far_flag;
         break;
 
         case 'c':
             DPRINTF("closing hands\n");
+            open_hand_flag = 0;
             close_hand_flag = ! close_hand_flag;
             break;
 
         case 'v':
             DPRINTF("valve rotation\n");
             reset();
+            reach_flag = 0;
+            push_flag=0;
+            moving_far_flag=0;
+            flag_init_hands=false;
+            init_rot_po=false;
+            flag_init_pushing=false;
+            flag_init_movingfar=false;
             valve_rotate_flag = ! valve_rotate_flag;
             break;
 
@@ -945,6 +1358,7 @@ int Boards_ctrl_basic::user_input(void *buffer, ssize_t buff_size) {
             start_stop_control(false);
             clear_mcs_faults();
             break;
+
     }
 
     return nbytes;

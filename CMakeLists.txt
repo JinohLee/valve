@@ -4,6 +4,7 @@ project(coman_basic_example)
 #    Coman project header. Don't touch unless you know how     # 
 ################################################################
 cmake_minimum_required(VERSION 2.8)
+cmake_policy(SET CMP0015 NEW)
 
 # COMAN_ROOT should be set in your bash script, or it can be set from the option
 #set (ENV{COMAN_ROOT} "/home/coman/AJ/COMAN_shared")
