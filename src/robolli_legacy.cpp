@@ -8,8 +8,8 @@ using namespace walkman::drc::valve;
 /** NOTE this are board ids, not array positions */
 int r_arm[] =       { 16, 17, 18 ,19};
 int l_arm[] =       { 20, 21, 22, 23};
-double r_arm_offs[] =  { 90,  0,  0,  0};  // offset in y2r(x)
-double l_arm_offs[] =  {-90,  0,  0,  0};  // offset in y2r(x)
+double r_arm_offs[] =  { 0,  90,  0,  0};  // offset in y2r(x)
+double l_arm_offs[] =  { 0, -90,  0,  0};  // offset in y2r(x)
 double no_offs[] =     {  0,  0,  0,  0};
 int r_farm[] = { 26, 27, 28, 32};
 int l_farm[] = { 29, 30, 31, 33};
@@ -53,6 +53,7 @@ robolli_legacy::robolli_legacy(yarp_interface& iYarp) : _iYarp(iYarp){
         _mc_bc_data_Velocity[i] = 0;
         _mc_bc_data_Torque[i] = 0;
         _home[i] = legacy_homePos[i];
+        _pos[i] = _home[i];
     }
 }
 
@@ -83,9 +84,9 @@ void robolli_legacy::getRobolliLeftArm(const int* robolliVec,
                                        const double scale,
                                        const double* y2r_offset) {
     for(unsigned int i = 0; i < l_arm_size; ++i)
-        left_arm_data[i] = (robolliVec[l_arm[i]] -  y2r_offset[i])/scale;
+        left_arm_data[i] = robolliVec[l_arm[i]-1]*scale - y2r_offset[i];
     for(unsigned int i = 0; i < l_farm_size; ++i)
-        left_arm_data[i+l_arm_size] = robolliVec[l_farm[i]]/scale;
+        left_arm_data[i+l_arm_size] = robolliVec[l_farm[i]-1]*scale;
 }
 
 void robolli_legacy::getRobolliRightArm(const int* robolliVec,
@@ -93,9 +94,9 @@ void robolli_legacy::getRobolliRightArm(const int* robolliVec,
                                         const double scale,
                                         const double* y2r_offset) {
     for(unsigned int i = 0; i < r_arm_size; ++i)
-        right_arm_data[i] = (robolliVec[r_arm[i]] - y2r_offset[i])/scale;
+        right_arm_data[i] = robolliVec[r_arm[i]-1]*scale - y2r_offset[i];
     for(unsigned int i = 0; i < r_farm_size; ++i)
-        right_arm_data[i+r_arm_size] = robolliVec[r_farm[i]]/scale;
+        right_arm_data[i+r_arm_size] = robolliVec[r_farm[i]-1]*scale;
 }
 
 void robolli_legacy::setRobolliLeftArm(int* robolliVec,
@@ -103,9 +104,9 @@ void robolli_legacy::setRobolliLeftArm(int* robolliVec,
                                        const double scale,
                                        const double *y2r_offset) {
     for(unsigned int i = 0; i < l_arm_size; ++i)
-        robolliVec[l_arm[i]] = (left_arm_data[i] + y2r_offset[i])*scale;
+        robolliVec[l_arm[i]-1] = (left_arm_data[i] + y2r_offset[i])*scale;
     for(unsigned int i = 0; i < l_farm_size; ++i)
-        robolliVec[l_farm[i]] = left_arm_data[i+l_arm_size]*scale;
+        robolliVec[l_farm[i]-1] = left_arm_data[i+l_arm_size]*scale;
 }
 
 void robolli_legacy::setRobolliRightArm(int* robolliVec,
@@ -113,9 +114,9 @@ void robolli_legacy::setRobolliRightArm(int* robolliVec,
                                         const double scale,
                                         const double* y2r_offset) {
     for(unsigned int i = 0; i < r_arm_size; ++i)
-        robolliVec[r_arm[i]] = (right_arm_data[i] + y2r_offset[i])*scale;
+        robolliVec[r_arm[i]-1] = (right_arm_data[i] + y2r_offset[i])*scale;
     for(unsigned int i = 0; i < r_farm_size; ++i)
-        robolliVec[r_farm[i]] = right_arm_data[i+r_arm_size]*scale;
+        robolliVec[r_farm[i]-1] = right_arm_data[i+r_arm_size]*scale;
 }
 
 
@@ -177,9 +178,10 @@ void robolli_legacy::updateToYarp(robot_joints_output& outputs) {
     getRobolliLeftArm(_pos,
                       outputs.q.data(),
                       1E-5*CTRL_RAD2DEG,
-                      r_arm_offs);
+                      l_arm_offs);
     getRobolliRightArm(_pos,
-                       outputs.q.data()+_iYarp.left_arm_dofs,
+                       &outputs.q[  _iYarp.left_arm_dofs +
+                                    _iYarp.left_hand_dofs],
                        1E-5*CTRL_RAD2DEG,
-                       l_arm_offs);
+                       r_arm_offs);
 }

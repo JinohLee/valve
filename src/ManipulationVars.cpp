@@ -19,7 +19,11 @@ ManipulationVars::ManipulationVars() :
         dXd_D(6), Xd_D(6),
         Xd_R(6), Xd_L(6),
         dXd_R(6), dXd_L(6),
-        Xd_D_init(6) {
+        Xd_D_init(6),
+        ////////////////////////
+        // LPF TEST
+        ///////////////////////
+        lamda(80.0), qf_l(8), qf_l_old(8) {
 
         K_inv   = 0.001;     //Tuned (0.02* 0.05)
         K_clik  = 1.5;       //Tuned
@@ -782,7 +786,7 @@ hand_pos ManipulationVars::openning(){
     return temp;
 }
 
-const vec &ManipulationVars::get_valve_data(){
+const vec ManipulationVars::get_valve_data(){
     vec temp(6);
     for (unsigned int i=0;i<6;i++)
         temp(i)=valve_data(i);

@@ -59,7 +59,7 @@ public:
     void init_manip(vec _q_l);
     bool isManipInit();
 
-    const vec& get_valve_data();
+    const vec get_valve_data();
     inline double get_radius();
     void set_valve_data(vec valve_data);
     mat jacob_right, jacob_left, jacob_R, jacob_R_1, jacob_R_2, zeros6b8,jacob_R_resized;
@@ -87,6 +87,15 @@ public:
     vec dXd_R, dXd_L;
     vec X_R, X_L, X_D;
     vec Xd_D_init;
+
+    hand_pos hand_delta_q;
+
+    ////////////////////////
+    // LPF TEST
+    ///////////////////////
+    double lamda;
+    vec qf_l;
+    vec qf_l_old;
 
     //flags
     bool flag_run_once;

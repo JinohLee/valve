@@ -56,6 +56,14 @@ src/robolli_legacy.cpp
 include/robolli_legacy.h
 )
 
+set(SOURCES_TEST
+src/test/test_yarp2robolli.cpp
+src/yarp_interface.cpp
+include/yarp_interface.h
+include/interface.h
+src/robolli_legacy.cpp
+include/robolli_legacy.h
+)
 
 set(LIBRARIES
 m
@@ -73,8 +81,10 @@ ${ICUB_LIBRARIES}
 )
 
 add_executable(jinoh_arash_valve ${SOURCES})
+add_executable(robolli_legacy_test ${SOURCES_TEST})
 add_custom_command(TARGET jinoh_arash_valve POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E
                          copy "${PROJECT_SOURCE_DIR}/config.yaml" "config.yaml")
 target_link_libraries(jinoh_arash_valve ${LIBRARIES})
+target_link_libraries(robolli_legacy_test ${LIBRARIES})
 install(TARGETS jinoh_arash_valve DESTINATION bin)

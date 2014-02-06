@@ -54,9 +54,9 @@ void ValveModule::controlLaw() {
 
     mVars.manip_kine(); //Calculate kinematics
 
-    hand_pos hand_delta_q; //Grasping/Openning requirements
-    hand_delta_q.l=0;
-    hand_delta_q.r=0;
+    //Grasping/Openning requirements
+    mVars.hand_delta_q.l=0;
+    mVars.hand_delta_q.r=0;
 
 
     if (count_loop_1==500)
@@ -104,12 +104,12 @@ void ValveModule::controlLaw() {
 
             //GRASPING  ------------------------------------------------------//
                 if ( close_hand_flag == 1 )
-                    hand_delta_q = mVars.grasping();
+                    mVars.hand_delta_q = mVars.grasping();
             //GRASPING  -----------------------------------------------------//
 
             //OPENNING ------------------------------------------------------//
                 if ( open_hand_flag == 1 )
-                    hand_delta_q = mVars.openning();
+                    mVars.hand_delta_q = mVars.openning();
             //OPENNING ------------------------------------------------------//
 
 
@@ -181,8 +181,8 @@ bool ValveModule::updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOAR
             _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
         }
 
-        mVars.delta_q_sum(7)=hand_delta_q.r;//exclude hand_right
-        mVars.delta_q_sum(15)=hand_delta_q.l;//exclude hand_left
+        mVars.delta_q_sum(7)=mVars.hand_delta_q.r;//exclude hand_right
+        mVars.delta_q_sum(15)=mVars.hand_delta_q.l;//exclude hand_left
 
         _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
         _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);

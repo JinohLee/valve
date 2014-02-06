@@ -85,8 +85,8 @@ yarp_interface::yarp_interface()
     command_port.open("/turn_valve/control:i");
     status_port.open("/turn_valve/status:o");       
     
-    left_hand_dofs = 1;
-    right_hand_dofs = 1;
+    left_hand_dofs = -1;
+    right_hand_dofs = -1;
 
     left_arm_dofs = -1;
     right_arm_dofs = -1;
@@ -101,6 +101,19 @@ yarp_interface::yarp_interface()
     }
     right_arm_dofs=temp_storage;
     
+
+    temp_storage=0;
+    if(left_hand_dofs == -1) {
+        positionControl_left_hand->getAxes(&temp_storage);
+    }
+    left_hand_dofs=temp_storage;
+
+    if(right_hand_dofs == -1) {
+        positionControl_right_hand->getAxes(&temp_storage);
+    }
+    right_hand_dofs=temp_storage;
+
+
     joint_numbers.push_back(left_arm_dofs);
     joint_numbers.push_back(right_arm_dofs);
     joint_numbers.push_back(left_hand_dofs);
@@ -350,7 +363,7 @@ void yarp_interface::move(const robot_joints_output& outputs) {
                                                         left_hand_dofs]);
     positionDirect_right_hand->setPositions(&outputs.q[ left_arm_dofs +
                                                         left_hand_dofs +
-                                                        right_hand_dofs]);
+                                                        right_arm_dofs]);
 //    positionControl_left_arm->positionMove(outputs.q.data());
 //    positionControl_right_arm->positionMove(&outputs.q[left_arm_dofs]);
 }

@@ -19,6 +19,8 @@ const float homePos[] = {
     0, 60,  0, -45, 0, -60, 0,  -45, 0,  0,  0,  0, 0,  0 , 0,  0 };
     // 16, 17, 18, 19, 20,  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31        
 
+const int two_arms_rl[] = {16, 17, 18 ,19, 26, 27, 28, 32,
+                          20, 21, 22, 23, 29, 30, 31, 33};
 
   valve_yarp::valve_yarp(const double period, int argc, char* argv[], yarp_interface& yarpInterface) :
       RateThread(int(period*1000.0)),
@@ -111,14 +113,25 @@ void valve_yarp::run()
 
   const robot_joints_output& valve_yarp::controlLaw (const robot_state_input& inputs, unsigned long int RTtime )
   {
+//    static int i = 0;
     robot_joints_output& outputs=iYarp.getOutputs();
 
-    // TODO need to call the robolli legacy code here,
-    //      what about _ts_bc_data ?
     manip_module._robolli_legacy->updateFromYarp(inputs);
     manip_module.updateFromRobolli(manip_module._robolli_legacy->_mc_bc_data_Position,
                                    manip_module._robolli_legacy->_mc_bc_data_Velocity,
                                    manip_module._robolli_legacy->_mc_bc_data_Torque);
+
+//    i++;
+//    if(i==1000) {
+//        std::cout << "q_y:" << inputs.q.toString() << std::endl;
+//        std::cout << "q_r:" << manip_module._robolli_legacy->_mc_bc_data_Position[two_arms_rl[0]-1];
+//        for(unsigned int j = j; j<inputs.q.size(); ++j)
+//            std::cout << " "
+//                      <<  manip_module._robolli_legacy->_mc_bc_data_Position[two_arms_rl[j]-1];
+//        std::cout << std::endl;
+//        std::cout << "q_l:";
+//        manip_module.mVars.q_l.print(std::cout);
+//    }
 
     manip_module.controlLaw();
 
@@ -126,9 +139,28 @@ void valve_yarp::run()
                                     manip_module._robolli_legacy->_home)) {
         manip_module._robolli_legacy->updateToYarp(outputs);
         outputs.doMove = true;
+
+//        if(i==1000) {
+//            std::cout << "q_y:" << outputs.q.toString() << std::endl;
+//            std::cout << "pos:" << manip_module._robolli_legacy->_pos[two_arms_rl[0]-1];
+//            for(unsigned int j = j; j<inputs.q.size(); ++j)
+//                std::cout << " "
+//                          <<  manip_module._robolli_legacy->_pos[two_arms_rl[j]-1];
+//            std::cout << std::endl;
+//            std::cout << "home:" << manip_module._robolli_legacy->_home[two_arms_rl[0]-1];
+//            for(unsigned int j = j; j<inputs.q.size(); ++j)
+//                std::cout << " "
+//                          <<  manip_module._robolli_legacy->_home[two_arms_rl[j]-1];
+//            std::cout << std::endl;
+//            std::cout << "q_s:";
+//            manip_module.mVars.delta_q_sum.print(std::cout);
+//        }
     } else {
         outputs.doMove = false;
     }
+
+//    if(i==1000)
+//        i = 0;
 
     return outputs;
   }
