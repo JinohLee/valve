@@ -491,12 +491,18 @@ bool ManipulationVars::isSafe(){
         {
             if (q_l(my_jnt_n) > 0.95 * q_max_all(my_jnt_n)){
                    safety_flag=safety_flag+1;
-                   cout<< "Max. Joint="<<my_jnt_n<<endl;
+                   std::cout << "Max. Joint= " << my_jnt_n
+                             << " with value " << q_l(my_jnt_n)
+                             << " out of " << q_max_all(my_jnt_n)
+                             << endl;
             }
 
             if (q_l(my_jnt_n) <0.95 * q_min_all(my_jnt_n)){
                    safety_flag=safety_flag+1;
-                   cout<< "Min. Joint="<<my_jnt_n<<endl;
+                   std::cout << "Min. Joint= " << my_jnt_n
+                             << " with value " << q_l(my_jnt_n)
+                             << " out of " << q_min_all(my_jnt_n)
+                             << endl;
             }
         }
 
