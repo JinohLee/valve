@@ -821,12 +821,18 @@ bool ManipulationVars::testsafety(){
         {
             if (q_l(my_jnt_n) > 0.95 * q_max_all(my_jnt_n)){
                    safety_flag=safety_flag+1;
-                   cout<< "Max. Joint="<<my_jnt_n<<endl;
+                   std::cout << "Max. Joint= " << my_jnt_n
+                             << " with value " << q_l(my_jnt_n)
+                             << " out of " << q_max_all(my_jnt_n)
+                             << endl;
             }
 
             if (q_l(my_jnt_n) <0.95 * q_min_all(my_jnt_n)){
                    safety_flag=safety_flag+1;
-                   cout<< "Min. Joint="<<my_jnt_n<<endl;
+                   std::cout << "Min. Joint= " << my_jnt_n
+                             << " with value " << q_l(my_jnt_n)
+                             << " out of " << q_min_all(my_jnt_n)
+                             << endl;
             }
         }
 
@@ -837,7 +843,9 @@ bool ManipulationVars::testsafety(){
                   safety_flag=safety_flag+1;
        }*/
 
-return safety_flag;
+    if(safety_flag == 0)
+        return true;
+    return false;
 }
 
 Boards_ctrl_basic::Boards_ctrl_basic(const char * config): Boards_ctrl_ext(config) {
@@ -1100,7 +1108,6 @@ int Boards_ctrl_basic::user_loop(void) {
        // cout<<endl;
                //close_hand_flag
         //open_hand_flag
-
         //(dXd_D.t() + K_clik * (Xd_D.t()-X_D.t())).print();
 
         //(joint_error_ar.t()).print();
@@ -1120,6 +1127,8 @@ int Boards_ctrl_basic::user_loop(void) {
         Rfkin.print("Rfkin=");
         (Qd.t()).print("Qd=");
         (Qe.t()).print("Qe=");
+
+
 
         (Orien_Err.t()).print("OErr=");
         cout<<endl;*/
