@@ -38,7 +38,19 @@ void ValveModule::controlLaw() {
     if(mVars.isManipInit() == false) {
         homingRobolli();
         mVars.init_manip(mVars.q_l);
+
+        /////////////LPF TEST
+        mVars.qf_l = mVars.q_l;
+        mVars.qf_l_old = mVars.q_l;
     }
+
+    mVars.qf_l = (mVars.lamda*0.001*mVars.q_l + mVars.qf_l_old)/(1.0+0.001*mVars.lamda);
+    mVars.qf_l_old = mVars.qf_l;
+    mVars.q_l.subvec(4,6) = mVars.qf_l.subvec(4,6);     //LPF activated
+    mVars.q_l.subvec(12,14) = mVars.qf_l.subvec(12,14);
+
+    mVars.q_l_resized.rows(0,6) = mVars.q_l.rows(0,6);
+    mVars.q_l_resized.rows(7,13) = mVars.q_l.rows(8,14);
 
     mVars.manip_kine(); //Calculate kinematics
 
@@ -139,8 +151,8 @@ void ValveModule::controlLaw() {
 
             //CALCULATE JOINT REFERENCES----------------------------------------//
                 mVars.delta_q_sum = mVars.delta_q_sum + mVars.delta_q;
-                mVars.delta_q_sum(7)=hand_delta_q.r;//exclude hand_right
-                mVars.delta_q_sum(15)=hand_delta_q.l;//exclude hand_left
+                mVars.delta_q_sum(7)=0;
+                mVars.delta_q_sum(15)=0;
 
             //CALCULATE JOINT REFERENCES---------------------------------------//
       }
@@ -168,6 +180,10 @@ bool ValveModule::updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOAR
         {
             _pos[two_arms[my_jnt_n]-1] = _home[two_arms[my_jnt_n]-1] + 100000.0 * mVars.delta_q_sum(my_jnt_n);
         }
+
+        mVars.delta_q_sum(7)=hand_delta_q.r;//exclude hand_right
+        mVars.delta_q_sum(15)=hand_delta_q.l;//exclude hand_left
+
         _pos[two_arms[7]-1] = 100000.0 * mVars.delta_q_sum(7);
         _pos[two_arms[15]-1] = 100000.0 * mVars.delta_q_sum(15);
 
