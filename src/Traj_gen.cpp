@@ -26,7 +26,7 @@ void line_traj(const vec &Xinit, vec &Xf, double Tf, double t, vec &Xd, vec &dXd
     }
 }
 
-void circle_traj(const vec &Xinit, double center_angle, double Tf, double t, double Radius, vec &Xd, vec &dXd)
+double circle_traj(const vec &Xinit, double center_angle, double Tf, double t, double Radius, vec &Xd, vec &dXd)
 {
     double Xf1;
     vec Xd_v(6), dXd_v(6);
@@ -69,7 +69,11 @@ void circle_traj(const vec &Xinit, double center_angle, double Tf, double t, dou
         Xd(2)  = Xinit(2) + Radius*(sin(Xf1));
 
         dXd.zeros();
+
+        CircleAngle = Xf1;
         //ddXd.zeros();
     }
+
+    return CircleAngle;
 
 }

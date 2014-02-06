@@ -19,8 +19,6 @@ ValveModule::ValveModule() {
 void ValveModule::init(robolli_legacy* robolli) {
     _robolli_legacy = robolli;
 
-    homingRobolli();
-
     g_tStart = 0;
     trj_flag = 0;
     reach_flag = 0;
@@ -37,8 +35,10 @@ void ValveModule::init(robolli_legacy* robolli) {
 
 void ValveModule::controlLaw() {
     /** ALWAYS call this after a sense(), so that q_l is meaningful */
-    if(mVars.isManipInit() == false)
+    if(mVars.isManipInit() == false) {
+        homingRobolli();
         mVars.init_manip(mVars.q_l);
+    }
 
     mVars.manip_kine(); //Calculate kinematics
 
@@ -182,24 +182,6 @@ bool ValveModule::updateToRobolli(int _pos[MAX_MC_BOARDS], int _home[MAX_MC_BOAR
     return false;
 }
 
-bool ValveModule::rotateValve() {
-    reset();
-    valve_rotate_flag = ! valve_rotate_flag;
-    return valve_rotate_flag;
-}
-
-bool ValveModule::closeHands() {
-    /*** TODO should we call reset() here?!? */
-    close_hand_flag = ! close_hand_flag;
-    return close_hand_flag;
-}
-
-bool ValveModule::moveFarFromValve() {
-    reset();
-    moving_far_flag = ! moving_far_flag;
-    return moving_far_flag;
-}
-
 bool ValveModule::reset() {
     g_tStart = -1;
     cout<<"reset() is called!="<<g_tStart<<endl;
@@ -216,18 +198,66 @@ bool ValveModule::doTrajectory() {
 
 bool ValveModule::doReaching() {
     reset();
+    push_flag=0;
+    moving_far_flag=0;
+    valve_rotate_flag = 0;
+    mVars.flag_init_hands=false;
+    mVars.init_rot_po=false;
+    mVars.flag_init_pushing=false;
+    mVars.flag_init_movingfar=false;
     reach_flag = ! reach_flag;
     return reach_flag;
 }
 
 bool ValveModule::doPushing() {
     reset();
+    valve_rotate_flag = 0;
+    moving_far_flag=0;
+    reach_flag = 0;
+    mVars.flag_init_hands=false;
+    mVars.init_rot_po=false;
+    mVars.flag_init_pushing=false;
+    mVars.flag_init_movingfar=false;
     push_flag = ! push_flag;
     return push_flag;
 }
 
 bool ValveModule::doOpenHand() {
+    close_hand_flag = 0;
     open_hand_flag = ! open_hand_flag;
     return open_hand_flag;
 }
 
+bool ValveModule::moveFarFromValve() {
+    reset();
+    reach_flag=0;
+    push_flag=0;
+    valve_rotate_flag=0;
+    mVars.flag_init_hands=false;
+    mVars.init_rot_po=false;
+    mVars.flag_init_pushing=false;
+    mVars.flag_init_movingfar=false;
+    moving_far_flag = ! moving_far_flag;
+    return moving_far_flag;
+}
+
+bool ValveModule::closeHands() {
+    /*** TODO should we call reset() here?!? */
+    open_hand_flag = 0;
+    close_hand_flag = ! close_hand_flag;
+    return close_hand_flag;
+}
+
+
+bool ValveModule::rotateValve() {
+    reset();
+    reach_flag = 0;
+    push_flag=0;
+    moving_far_flag=0;
+    mVars.flag_init_hands=false;
+    mVars.init_rot_po=false;
+    mVars.flag_init_pushing=false;
+    mVars.flag_init_movingfar=false;
+    valve_rotate_flag = ! valve_rotate_flag;
+    return valve_rotate_flag;
+}
