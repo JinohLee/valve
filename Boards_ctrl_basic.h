@@ -47,7 +47,7 @@ typedef struct{
 
     double CartX_L;
     double CartY_L;
-    double CartZ_L;    
+    double CartZ_L;
 
 } log_user_t;
 
