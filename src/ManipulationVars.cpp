@@ -18,7 +18,7 @@ ManipulationVars::ManipulationVars() :
         Xi_R(6), Xi_L(6),orient_e_R(3),
         dXd_D(6), Xd_D(6),
         Xd_R(6), Xd_L(6),
-        dXd_R(6), dXd_L(6),
+        dXd_R(6), dXd_L(6), z6(6),
         Xd_D_init(6),
         ////////////////////////
         // LPF TEST
@@ -85,6 +85,7 @@ void ManipulationVars::manip_kine()
     obj_r_G.zeros();
     zeros6b8.zeros();
     orient_e_R.zeros();
+    z6.zeros();
 
     q_max_r <<195*M_PI/180.0 <<endr
             <<170*M_PI/180.0 <<endr
@@ -284,11 +285,13 @@ void ManipulationVars::manip_kine()
     */
 
     //   START: PRIRORITY KINEMATICS
-    //Js_1=join_rows(jacob_right,zeros6b8);
-    //Js_2 = jacob_R;
+    Js_1 = join_rows(jacob_right,zeros6b8);
+    Js_2 = jacob_R;
 
-    Js_1 = jacob_R;
-    Js_2 = join_rows(jacob_right,zeros6b8);
+    Js_1.col(7)=z6;//added
+    Js_2.col(7)=z6;
+    Js_2.col(15)=z6;
+
 
      if (det(Js_1*Js_1.t())>0.0000001)
          pinv_Js_1=pinv(Js_1);
@@ -547,7 +550,7 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
 }
 
 
-void ManipulationVars::rotating(u_int64_t dt_ns){
+/*void ManipulationVars::rotating(u_int64_t dt_ns){
 
     mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
     vec n_e, s_e, a_e, n_d, s_d, a_d;
@@ -646,9 +649,9 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
     delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
-}
+}*/
 
-/*void ManipulationVars::rotating(u_int64_t dt_ns){
+void ManipulationVars::rotating(u_int64_t dt_ns){
 
     mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
     vec n_e, s_e, a_e, n_d, s_d, a_d;
@@ -717,9 +720,10 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
 
 
     //relative motion
-    //delta_q = K_inv * pinv_Js_1 * V_R + K_inv * pinv_Jhat_2 * (dXd_D + K_clik * (Xd_D-X_D) - Js_2 * pinv_Js_1 * V_R);// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
+    delta_q = K_inv * pinv_Js_1 * V_R + K_inv * pinv_Jhat_2 * (dXd_D + K_clik * (Xd_D-X_D) - Js_2 * pinv_Js_1 * V_R);// + K_null * (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
 
-    delta_q = K_inv * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)) + K_inv * pinv_Jhat_2 * (V_R - Js_2 * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)));// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
+    //rest:::testing
+    //delta_q = K_inv * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)) + K_inv * pinv_Jhat_2 * (V_R - Js_2 * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)));// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
 
     //delta_q_cds=delta_t_cds*(pinv_Js_1*(x_dot_1 + k_lim*(x_1_d-x_1_r)) + pinv_Jhat_2*(x_dot_2 + k_lim*(x_2_d-x_2_r) - Js_2*pinv_Js_1*(x_dot_1+ k_lim*(x_1_d-x_1_r))) + (Ident.eye()-pinv_Js_1*Js_1)*(Ident.eye()-pinv_Jhat_2*Jhat_2)*lambda_dot*null_control);
 
@@ -728,8 +732,16 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
 
     //Relative between two-arms
 
-   // delta_q= K_inv* pinv_jacob_R* (Xd_D-X_D);
-    //delta_q= - 0.00005* (I_16 - pinv(jacob_R)*jacob_R)*null_vel;
+    // delta_q= K_inv* pinv_jacob_R* (Xd_D-X_D);
+    /*mat jacob_R_new;
+    jacob_R_new=jacob_R;
+    jacob_R_new.col(7)=z6;
+    jacob_R_new.col(15)=z6;
+    //cout<<jacob_R_new<<endl;
+
+    null_vel(7)=0;
+    null_vel(15)=0;
+    delta_q= 0.00005* (I_16 - pinv(jacob_R_new)*jacob_R_new)*null_vel;*/
 
 
     //vec delta_q_resized;
@@ -738,11 +750,11 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     //delta_q.rows(0,6)=delta_q_resized.rows(0,6);
     //delta_q.rows(8,14)=delta_q_resized.rows(7,13);
 
-   // delta_q(14)=  delta_q(14) - 0.0000001;
+    // delta_q(14)=  delta_q(14) - 0.0000001;
     //delta_q.rows(8,15)= -100 * K_inv* pinv_jacob_left*C_vel;
 
 }
-*/
+
 hand_pos ManipulationVars::grasping(){
 
     //right hand

@@ -72,7 +72,7 @@ public:
     vec Theta_0_R, Theta_0_L, q_l, q_l_resized, q_dot, tau, C_vel, q_ref, q_h, delta_q, delta_q_sum, null_vel, obj_r_T, obj_w_T, joint_error_ar;
     vec lambda_dot_jntlmt_r,lambda_dot_jntlmt_l, lambda_dot_jntlmt, q_max_r, q_min_r, q_bar_r, q_max_l, q_min_l, q_bar_l;
     vec Qr, Ql, Qi_r, Qi_l, Qd_r, Qd_l,orient_e_R;
-    vec Eo_r, Eo_l;
+    vec Eo_r, Eo_l, z6;
     double K_inv;     //Tuned (0.02* 0.05)
     double K_clik;       //Tuned
     double K_null;     //not tuned
