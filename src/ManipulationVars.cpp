@@ -538,8 +538,8 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
 
     if(flag_init_movingfar == false){
         //t_traj_start = get_time_ns();
-        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)-0.15<<fkin_po_right(2)+0.15<<0.0<<0.0<<0.0;
-        Xd_L<<fkin_po_left(0)<<fkin_po_left(1)+0.15<<fkin_po_left(2)-0.15<<0.0<<0.0<<0.0;
+        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)-0.10<<fkin_po_right(2)+0.10<<0.0<<0.0<<0.0;
+        Xd_L<<fkin_po_left(0)<<fkin_po_left(1)+0.10<<fkin_po_left(2)-0.10<<0.0<<0.0<<0.0;
         flag_init_movingfar = true;
 
     }
@@ -550,7 +550,7 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
 }
 
 
-/*void ManipulationVars::rotating(u_int64_t dt_ns){
+void ManipulationVars::rotating(u_int64_t dt_ns){
 
     mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
     vec n_e, s_e, a_e, n_d, s_d, a_d;
@@ -573,7 +573,9 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
 
     //right hand trajectory
     angle_d_R = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
-    angle_d_L = circle_traj( Xi_L, 45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_L, dXd_L);
+    angle_d_L = circle_traj( Xi_L, -45.0*M_PI/180.0 ,  10.0, (dt_ns/1e9), -0.1 , Xd_L, dXd_L);
+
+    //circle_traj(const vec &Xinit, double center_angle, double Tf, double t, double Radius, vec &Xd, vec &dXd)
 
 
     Xv<<0<<0<<0<<M_PI<<0<<0;
@@ -649,9 +651,9 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
     delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
     delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
-}*/
+}
 
-void ManipulationVars::rotating(u_int64_t dt_ns){
+/*void ManipulationVars::rotating(u_int64_t dt_ns){
 
     mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
     vec n_e, s_e, a_e, n_d, s_d, a_d;
@@ -733,15 +735,14 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     //Relative between two-arms
 
     // delta_q= K_inv* pinv_jacob_R* (Xd_D-X_D);
-    /*mat jacob_R_new;
-    jacob_R_new=jacob_R;
-    jacob_R_new.col(7)=z6;
-    jacob_R_new.col(15)=z6;
-    //cout<<jacob_R_new<<endl;
+   // mat jacob_R_new;
+   // jacob_R_new=jacob_R;
+   // jacob_R_new.col(7)=z6;
+  //  jacob_R_new.col(15)=z6;
 
-    null_vel(7)=0;
-    null_vel(15)=0;
-    delta_q= 0.00005* (I_16 - pinv(jacob_R_new)*jacob_R_new)*null_vel;*/
+  //  null_vel(7)=0;
+  //  null_vel(15)=0;
+  //  delta_q= 0.00005* (I_16 - pinv(jacob_R_new)*jacob_R_new)*null_vel;
 
 
     //vec delta_q_resized;
@@ -753,7 +754,7 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     // delta_q(14)=  delta_q(14) - 0.0000001;
     //delta_q.rows(8,15)= -100 * K_inv* pinv_jacob_left*C_vel;
 
-}
+}*/
 
 hand_pos ManipulationVars::grasping(){
 

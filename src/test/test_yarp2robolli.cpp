@@ -118,10 +118,15 @@ void test::valve_yarp::run()
 
     for(unsigned j= 0; j < 16; ++j)
         _robolli_legacy._pos[two_arms_rl[j]-1] = 0;
+
     _robolli_legacy._pos[two_arms_rl[0]-1] = -M_PI_2*1E5;
-    _robolli_legacy._pos[two_arms_rl[1]-1] = M_PI_2*1E5;
+    _robolli_legacy._pos[two_arms_rl[1]-1] = 0;
+//    _robolli_legacy._pos[two_arms_rl[1]-1] = M_PI_2*1E5;
+    _robolli_legacy._pos[two_arms_rl[3]-1] = -M_PI_2*1E5;
     _robolli_legacy._pos[two_arms_rl[8]-1] = -M_PI_2*1E5;
-    _robolli_legacy._pos[two_arms_rl[9]-1] = -M_PI_2*1E5;
+    _robolli_legacy._pos[two_arms_rl[9]-1] = 0;
+//    _robolli_legacy._pos[two_arms_rl[9]-1] = -M_PI_2*1E5;
+    _robolli_legacy._pos[two_arms_rl[11]-1] = -M_PI_2*1E5;
     /*****************/
 
     _robolli_legacy.updateToYarp(outputs);
