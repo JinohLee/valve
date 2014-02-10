@@ -207,7 +207,8 @@ int main(int argc, char* argv[])
     yarp::os::Network yarp;
     while(!yarp.checkNetwork()){
         std::cout<<"yarpserver not running, pls run yarpserver"<<std::endl;
-        sleep(1);
+        yarp::os::Time::delay(1);
+        //sleep(1);
     }
 
     valve_module mod;
