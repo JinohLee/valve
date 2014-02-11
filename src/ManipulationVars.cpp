@@ -26,8 +26,8 @@ ManipulationVars::ManipulationVars() :
         lamda(80.0), qf_l(8), qf_l_old(8) {
 
         K_inv   = 0.001;     //Tuned (0.02* 0.05)
-        K_clik  = 1.5;       //Tuned
-        K_null  = 0.01;     //not tuned
+        K_clik  = 1.5;      //Tuned
+        K_null  = 0.01;      //not tuned
         L0=0.15154; L1=0.1375; L2=0.19468; a3=0.005; Le=0.010;
         S1=0;S2=0;S3=0;S4=0;S5=0;S6=0;S7=0;S8=0;S9=0;S10=0;S11=0;S12=0;S13=0;S14=0;S15=0;S16=0;
         C1=0;C2=0;C3=0;C4=0;C5=0;C6=0;C7=0;C8=0;C9=0;C10=0;C11=0;C12=0;C13=0;C14=0;C15=0;C16=0;
@@ -438,11 +438,11 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         vec V_R(6), V_L(6);
 
         V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-        V_R.subvec(3,5) =  1 * Eo_r;
+        V_R.subvec(3,5) =  1.0 * Eo_r;
 
         V_L.subvec(0,2) = dXd_L.subvec(0,2) + K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
         //V_L.subvec(3,5) = 0.5*K_clik*Eo_l;
-        V_L.subvec(3,5) =  1 * Eo_l;
+        V_L.subvec(3,5) =  1.0 * Eo_l;
 
 
         delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);

@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <valve_yarp.h>
 
-#define dT 0.001 //[s]
+#define dT 0.002 //[s]
 
 
 namespace walkman {
