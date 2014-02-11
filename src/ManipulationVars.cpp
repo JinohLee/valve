@@ -460,7 +460,7 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
 
 void ManipulationVars::pushing(u_int64_t dt_ns){
 
-    double Roff = 0.05;     //offset, 5cm
+    double Roff = 0.03;     //offset, 5cm
     mat ROTv(3,3), L_rot_R, L_rot_L;
 
     if(flag_init_pushing == false){
@@ -571,9 +571,14 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
 
     }
 
+//    std::cout << "--------------------------";
+//    std::cout << "x_r: " << fkin_po_right(0) << std::endl
+//              << "x_l: " << fkin_po_left(0) << std::endl
+//              << std::endl;
+
     //right hand trajectory
-    angle_d_R = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
-    angle_d_L = circle_traj( Xi_L, -45.0*M_PI/180.0 ,  10.0, (dt_ns/1e9), -0.1 , Xd_L, dXd_L);
+    angle_d_R = circle_traj( Xi_R, -25.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
+    angle_d_L = circle_traj( Xi_L, -25.0*M_PI/180.0 ,  10.0, (dt_ns/1e9), -0.1 , Xd_L, dXd_L);
 
     //circle_traj(const vec &Xinit, double center_angle, double Tf, double t, double Radius, vec &Xd, vec &dXd)
 
@@ -648,8 +653,11 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     V_L.subvec(3,5) =  1 * Eo_l;
 
 
-    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-    delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+    /** DISABLING null space motions */
+//    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+//    delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R;
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L;
 
 }
 
@@ -816,13 +824,16 @@ void ManipulationVars::set_valve_data(vec valve_data){
 
 bool ManipulationVars::isSafe(){
     /** TODO check */
-    return true;
     safety_flag=0;
     vec q_max_all = join_cols(q_max_r,q_max_l);
     vec q_min_all = join_cols(q_min_r,q_min_l);
 
     for (int my_jnt_n =0; my_jnt_n<15; my_jnt_n++)
         {
+            if(my_jnt_n == 5 ||
+               my_jnt_n == 13)
+                continue;
+
             if (q_l(my_jnt_n) > 0.95 * q_max_all(my_jnt_n)){
                    safety_flag=safety_flag+1;
                    std::cout << "Max. Joint= " << my_jnt_n
