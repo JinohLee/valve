@@ -6,28 +6,31 @@
 
 //For kinematics
 ManipulationVars::ManipulationVars() :
-        jacob_right(6, 8), jacob_left(6, 8), jacob_R(6, 16), jacob_R_1(3,16), jacob_R_2(3,16), zeros6b8(6,8), jacob_R_resized(6, 14),
+        jacob_right(6, 8), jacob_left(6, 8), jacob_R(6, 16), jacob_R_1(3,16), jacob_R_2(3,16), zeros6b8(6,8),
         fkin_or_left(3,3), fkin_or_right(3,3), fkin_po_left(3,1), fkin_po_right(3,1),
         I_16(16,16),I_14(14,14), I_8(8,8), I_6(6,6), obj_R_G(3,3), o_R_A(3,3), o_R_B(3,3),
         o_base(3,1), o_r_A(3,1), o_r_B(3,1), obj_r_G(3,1),
         A_R_hat_BA(3,3), A_R_hat_T(3,3), A_R_hat_G(3,3), J_11(3,8), J_12(3,8), J_21(3,8), J_22(3,8),
         J_p_L(3,8), J_p_R(3,8), J_o_L(3,8), J_o_R(3,8), joint_error_ar(16),
-        Theta_0_R(8), Theta_0_L(8), q_l(16), q_l_resized(14), q_dot(16), tau(14), C_vel(6), q_ref(16), q_h(16), delta_q(16), delta_q_sum(16), null_vel(14), obj_r_T(3), obj_w_T(3),
+        Theta_0_R(8), Theta_0_L(8), q_l(16), q_dot(16), tau(14), C_vel(6), q_ref(16), q_h(16), delta_q(16), delta_q_sum(16), null_vel(14), obj_r_T(3), obj_w_T(3),
         lambda_dot_jntlmt_r(8),lambda_dot_jntlmt_l(8), lambda_dot_jntlmt(16), q_max_r(8), q_min_r(8), q_bar_r(8), q_max_l(8), q_min_l(8), q_bar_l(8),
         Qr(4), Ql(4), Qi_r(4), Qi_l(4), Qd_r(4), Qd_l(4), Eo_r(3), Eo_l(3),
         Xi_R(6), Xi_L(6),orient_e_R(3),
-        dXd_D(6), Xd_D(6),
+        dXd_D(6), Xd_D(6), jacob_right_new(6,8), jacob_left_new(6,8),
         Xd_R(6), Xd_L(6),
         dXd_R(6), dXd_L(6), z6(6),
         Xd_D_init(6),
         ////////////////////////
         // LPF TEST
         ///////////////////////
-        lamda(80.0), qf_l(8), qf_l_old(8) {
+        qf_l(8), qf_l_old(8) {
 
-        K_inv   = 0.001;     //Tuned (0.02* 0.05)
-        K_clik  = 1.5;       //Tuned
-        K_null  = 0.01;     //not tuned
+        K_inv   = 0.002;     //Tuned (0.02* 0.05)
+        K_clik  = 1;       //Tuned
+        K_null  = 0.02;     //not tuned
+        K_Er    = 4;
+        lamda=80;
+
         L0=0.15154; L1=0.1375; L2=0.19468; a3=0.005; Le=0.010;
         S1=0;S2=0;S3=0;S4=0;S5=0;S6=0;S7=0;S8=0;S9=0;S10=0;S11=0;S12=0;S13=0;S14=0;S15=0;S16=0;
         C1=0;C2=0;C3=0;C4=0;C5=0;C6=0;C7=0;C8=0;C9=0;C10=0;C11=0;C12=0;C13=0;C14=0;C15=0;C16=0;
@@ -88,7 +91,7 @@ void ManipulationVars::manip_kine()
     z6.zeros();
 
     q_max_r <<195*M_PI/180.0 <<endr
-            <<170*M_PI/180.0 <<endr
+            <<108*M_PI/180.0 <<endr
             <<90*M_PI/180.0 <<endr
             <<0*M_PI/180.0  <<endr
             <<90*M_PI/180.0 <<endr
@@ -97,7 +100,7 @@ void ManipulationVars::manip_kine()
             <<90*M_PI/180.0 <<endr;
 
     q_min_r <<-95*M_PI/180.0 <<endr
-            <<-18*M_PI/180.0 <<endr
+            <<-80*M_PI/180.0 <<endr
             <<-90*M_PI/180.0 <<endr
             <<-135*M_PI/180.0<<endr
             <<-90*M_PI/180.0 <<endr
@@ -108,9 +111,10 @@ void ManipulationVars::manip_kine()
     q_bar_r = 0.5*(q_max_r + q_min_r);
     q_bar_r(6) = 0.0*M_PI/180.0;    //wrist
     //q_bar_r(5) = -10.0*M_PI/180.0;    //wrist
+    q_bar_r(1)=40.0*M_PI/180.0;
 
     q_max_l <<95*M_PI/180.0 <<endr
-            <<18*M_PI/180.0 <<endr
+            <<80*M_PI/180.0 <<endr
             <<90*M_PI/180.0 <<endr
             <<0*M_PI/180.0  <<endr
             <<90*M_PI/180.0 <<endr
@@ -119,7 +123,7 @@ void ManipulationVars::manip_kine()
             <<90*M_PI/180.0 <<endr;
 
     q_min_l <<-195*M_PI/180.0 <<endr
-            <<-170*M_PI/180.0 <<endr
+            <<-108*M_PI/180.0 <<endr
             <<-90*M_PI/180.0 <<endr
             <<-135*M_PI/180.0<<endr
             <<-90*M_PI/180.0 <<endr
@@ -130,6 +134,7 @@ void ManipulationVars::manip_kine()
     q_bar_l = 0.5*(q_max_l + q_min_l);
     q_bar_l(6) = 0.0*M_PI/180.0;
     //q_bar_l(5) = -10.0*M_PI/180.0;
+    q_bar_l(1)= -40.0*M_PI/180.0;
 
     S1=sin(q_l(0) - M_PI/2.0);
     S2=sin(q_l(1));
@@ -232,9 +237,13 @@ void ManipulationVars::manip_kine()
     J_p_R=jacob_right.rows(0,2);
     J_o_R=jacob_right.rows(3,5);
 
+    jacob_right_new=jacob_right;
+    jacob_right_new.col(7)=z6;
+
+    jacob_left_new=jacob_left;
+    jacob_left_new.col(7)=z6;
 
     //-------RELATIVE KINEMATICS
-
     //calcSkew(fkin_or_right.t() * o_R_A.t() * (o_r_B - o_r_A), A_R_hat_BA);
     //A_R_hat_BA=-1*A_R_hat_BA;
 
@@ -251,38 +260,33 @@ void ManipulationVars::manip_kine()
 
     jacob_R_1=join_rows(J_11,J_12);
     jacob_R_2=join_rows(J_21,J_22);
-
     jacob_R=join_cols(jacob_R_1,jacob_R_2);
 
-    jacob_R_resized.cols(0,6)=jacob_R.cols(0,6);
-    jacob_R_resized.cols(7,13)=jacob_R.cols(8,14);
 
     obj_r_T=obj_R_G * fkin_or_right.t() * o_R_A.t() * (o_r_B - o_r_A  + o_R_B * fkin_po_left) - obj_R_G * fkin_or_right.t() * fkin_po_right + obj_r_G;
     //obj_w_T=obj_R_G * fkin_or_right.t() *(o_R_A.t() * o_R_B * J_o_L *delta_q.rows(8,15)  -  J_o_R * delta_q.rows(0,7));
     obj_w_T=obj_R_G * fkin_or_right.t() *(o_R_A.t() * o_R_B * J_o_L *q_dot.rows(8,15)  -  J_o_R * q_dot.rows(0,7));
 
-    pinv_jacob_right=pinv(jacob_right);
-    pinv_jacob_left=pinv(jacob_left);
-    pinv_jacob_R=pinv(jacob_R);
-
     orient_e_R=orient_e_R+obj_w_T;
 
-    /*A_R_hat_G
-    if (det(jacob_right*jacob_right.t())>0.001)
-        pinv_jacob_right=pinv(jacob_right);
-    else
-        pinv_jacob_right=jacob_right.t() * inv(jacob_right*jacob_right.t() + 0.001*I_6);
 
-    if (det(jacob_left*jacob_left.t())>0.001)
-        pinv_jacob_left=pinv(jacob_left);
+    if (det(jacob_right*jacob_right.t())>1e-7)
+        pinv_jacob_right_new=pinv(jacob_right_new);
     else
-        pinv_jacob_left=jacob_left.t() * inv(jacob_left*jacob_left.t() + 0.001*I_6);
+        pinv_jacob_right_new=jacob_right_new.t() * inv(jacob_right_new*jacob_right_new.t() + 0.001*I_6);
 
-    if (det(jacob_R*jacob_R.t())>0.001)
+    if (det(jacob_left*jacob_left.t())>1e-7)
+        pinv_jacob_left_new=pinv(jacob_left_new);
+    else
+        pinv_jacob_left_new=jacob_left_new.t() * inv(jacob_left_new*jacob_left_new.t() + 0.001*I_6);
+
+    if (det(jacob_R*jacob_R.t())>1e-7)
         pinv_jacob_R=pinv(jacob_R);
     else
         pinv_jacob_R=jacob_R.t() * inv(jacob_R*jacob_R.t() + 0.001*I_6);
-    */
+
+
+
 
     //   START: PRIRORITY KINEMATICS
     Js_1 = join_rows(jacob_right,zeros6b8);
@@ -293,7 +297,7 @@ void ManipulationVars::manip_kine()
     Js_2.col(15)=z6;
 
 
-     if (det(Js_1*Js_1.t())>0.0000001)
+     if (det(Js_1*Js_1.t())>1e-7)
          pinv_Js_1=pinv(Js_1);
      else
         pinv_Js_1=Js_1.t() * inv(Js_1*Js_1.t() + 0.001*I_6);
@@ -301,7 +305,7 @@ void ManipulationVars::manip_kine()
 
      Jhat_2=Js_2*(I_16- pinv_Js_1*Js_1);
 
-     if (det(Jhat_2*Jhat_2.t())>0.0000001)
+     if (det(Jhat_2*Jhat_2.t())>1e-7)
         pinv_Jhat_2=pinv(Jhat_2);
      else
         pinv_Jhat_2=Jhat_2.t() * inv(Jhat_2*Jhat_2.t() + 0.001*I_6);
@@ -334,26 +338,19 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         flag_init_hands = true;
         Xd_R = Xi_R;
         Xd_L = Xi_L;
-
-        RotQuaternion(fkin_or_right, Qi_r);
-        RotQuaternion(fkin_or_left, Qi_l);
-        Qd_r = Qi_r;
-        Qd_l = Qi_l;
     }
 
         //Get valve position/orientation
         //vec Xv(6);
         //vec Xv = get_valve_data();
         vec Xv(6);
-        Xv<<0.25<<0.0<<0.0<<M_PI<<0.0<<0.0;
+        Xv<<0.25<<0.0<<-0.1<<M_PI<<0.0<<0.0;
         mat ROTv(3,3), deltaR_R(3,3), deltaR_L(3,3), L_rot_R, L_rot_L;
         vec Qv(4);
         //Rotation matrix from ZYX Euler angle (alpha-beta-gamma)
         ROTv<< cos(Xv(3))*cos(Xv(4)) << cos(Xv(3))*sin(Xv(4))*sin(Xv(5)) - sin(Xv(3))*cos(Xv(5)) << cos(Xv(3))*sin(Xv(4))*cos(Xv(5)) + sin(Xv(3))*sin(Xv(5)) <<endr
             << sin(Xv(3))*cos(Xv(4)) << sin(Xv(3))*sin(Xv(4))*sin(Xv(5)) + cos(Xv(3))*cos(Xv(5)) << sin(Xv(3))*sin(Xv(4))*cos(Xv(5)) - cos(Xv(3))*sin(Xv(5)) <<endr
             << -sin(Xv(4)) << cos(Xv(4))*sin(Xv(5)) << cos(Xv(4))*cos(Xv(5)) <<endr;
-        //Quaternion for valve orientation
-        RotQuaternion(ROTv, Qv);
 
         deltaR_R=ROTv* fkin_or_right.t();
         deltaR_L=ROTv* fkin_or_left.t();
@@ -371,9 +368,6 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
 
 
         //displacement: target - init
-        //TEST:
-        //Xf_R<<0.10<<-0.10<<0.10<<0.0<<0.0<<0.0;
-        //Xf_L<<0.10<< 0.10<<0.10<<0.0<<0.0<<0.0;
         Xf_R = Xt_R - Xi_R;
         Xf_L = Xt_L - Xi_L;
 
@@ -381,25 +375,9 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         line_traj( Xi_R, Xf_R , 10.0, (dt_ns/1e9), Xd_R, dXd_R);
         line_traj( Xi_L, Xf_L , 10.0, (dt_ns/1e9), Xd_L, dXd_L);
 
-
-        //Quaternion Trajectory
-        vec Xfq_R(4), Xfq_L(4);
-        vec dQd_r(4), dQd_l(4); //dummy
-
-        Xfq_R = Qv - Qi_r;
-        Xfq_L = Qv - Qi_l;
-
-        line_traj(Qi_r, Xfq_R, 2.0, (dt_ns/1e9), Qd_r, dQd_r);
-        line_traj(Qi_l, Xfq_L, 2.0, (dt_ns/1e9), Qd_l, dQd_l);
-
         //Orientation Error
         Eo_r.zeros();
         Eo_l.zeros();
-        //OrientationError(Qd_r, Qr, Eo_r);
-        //OrientationError(Qd_l, Ql, Eo_l);
-
-       // RotQuaternion(deltaR_R, Eo_r);
-       // RotQuaternion(deltaR_L, Eo_l);
 
         mat Sn_e, Ss_e, Sa_e, Sn_d, Ss_d, Sa_d;
         vec n_e, s_e, a_e, n_d, s_d, a_d;
@@ -438,15 +416,18 @@ void ManipulationVars::reaching(u_int64_t dt_ns){
         vec V_R(6), V_L(6);
 
         V_R.subvec(0,2) = dXd_R.subvec(0,2) + K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-        V_R.subvec(3,5) =  1 * Eo_r;
+        V_R.subvec(3,5) =  K_Er * Eo_r;
 
         V_L.subvec(0,2) = dXd_L.subvec(0,2) + K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
         //V_L.subvec(3,5) = 0.5*K_clik*Eo_l;
-        V_L.subvec(3,5) =  1 * Eo_l;
+        V_L.subvec(3,5) =  K_Er * Eo_l;
+
+        delta_q.rows(0,7)=  K_inv* pinv_jacob_right_new*V_R + K_null * (I_8 - pinv_jacob_right_new*jacob_right_new) * (-lambda_dot_jntlmt_r);
+        delta_q.rows(8,15)= K_inv* pinv_jacob_left_new *V_L + K_null * (I_8 - pinv_jacob_left_new*jacob_left_new) * (-lambda_dot_jntlmt_l);
 
 
-        delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-        delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+        //delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + 0*K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
+        //delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + 0*K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
 
 
         //if(norm((Xd_R - X_R),"fro") > 0.01)//Right arm (TODO)
@@ -522,14 +503,14 @@ void ManipulationVars::pushing(u_int64_t dt_ns){
     vec V_R(6), V_L(6);
 
     V_R.subvec(0,2) =  K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-    V_R.subvec(3,5) =  5 * Eo_r;
+    V_R.subvec(3,5) =  K_Er * Eo_r;
 
     V_L.subvec(0,2) =  K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
-    V_L.subvec(3,5) =  5 * Eo_l;
+    V_L.subvec(3,5) =  K_Er * Eo_l;
 
 
-        delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-        delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right_new*V_R + K_null * (I_8 - pinv_jacob_right_new*jacob_right_new) * (-lambda_dot_jntlmt_r);
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left_new *V_L + K_null * (I_8 - pinv_jacob_left_new*jacob_left_new) * (-lambda_dot_jntlmt_l);
 
 }
 
@@ -538,14 +519,14 @@ void ManipulationVars::movingfar(u_int64_t dt_ns){
 
     if(flag_init_movingfar == false){
         //t_traj_start = get_time_ns();
-        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)-0.10<<fkin_po_right(2)+0.10<<0.0<<0.0<<0.0;
-        Xd_L<<fkin_po_left(0)<<fkin_po_left(1)+0.10<<fkin_po_left(2)-0.10<<0.0<<0.0<<0.0;
+        Xd_R<<fkin_po_right(0)<<fkin_po_right(1)-0.08<<fkin_po_right(2)-0.05<<0.0<<0.0<<0.0;
+        Xd_L<<fkin_po_left(0)<<fkin_po_left(1)+0.08<<fkin_po_left(2)+0.05<<0.0<<0.0<<0.0;
         flag_init_movingfar = true;
 
     }
 
-    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*(Xd_R - X_R) + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-    delta_q.rows(8,15)= K_inv* pinv_jacob_left *(Xd_L - X_L) + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right_new*(Xd_R - X_R) + K_null * (I_8 - pinv_jacob_right_new*jacob_right_new) * (-lambda_dot_jntlmt_r);
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left_new *(Xd_L - X_L) + K_null * (I_8 - pinv_jacob_left_new*jacob_left_new) * (-lambda_dot_jntlmt_l);
 
 }
 
@@ -572,8 +553,8 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     }
 
     //right hand trajectory
-    angle_d_R = circle_traj( Xi_R, -45.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
-    angle_d_L = circle_traj( Xi_L, -45.0*M_PI/180.0 ,  10.0, (dt_ns/1e9), -0.1 , Xd_L, dXd_L);
+    angle_d_R = circle_traj( Xi_R, -25.0*M_PI/180.0 , 10.0, (dt_ns/1e9), 0.1 , Xd_R, dXd_R);
+    angle_d_L = circle_traj( Xi_L, -25.0*M_PI/180.0 ,  10.0, (dt_ns/1e9), -0.1 , Xd_L, dXd_L);
 
     //circle_traj(const vec &Xinit, double center_angle, double Tf, double t, double Radius, vec &Xd, vec &dXd)
 
@@ -642,14 +623,14 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
     vec V_R(6), V_L(6);
 
     V_R.subvec(0,2) =  K_clik*(Xd_R.subvec(0,2) - X_R.subvec(0,2));
-    V_R.subvec(3,5) =  1 * Eo_r;
+    V_R.subvec(3,5) =  K_Er * Eo_r;
 
     V_L.subvec(0,2) =  K_clik*(Xd_L.subvec(0,2) - X_L.subvec(0,2));
-    V_L.subvec(3,5) =  1 * Eo_l;
+    V_L.subvec(3,5) =  K_Er * Eo_l;
 
 
-    delta_q.rows(0,7)=  K_inv* pinv_jacob_right*V_R + K_null * (I_8 - pinv_jacob_right*jacob_right) * (-lambda_dot_jntlmt_r);
-    delta_q.rows(8,15)= K_inv* pinv_jacob_left *V_L + K_null * (I_8 - pinv_jacob_left*jacob_left) * (-lambda_dot_jntlmt_l);
+    delta_q.rows(0,7)=  K_inv* pinv_jacob_right_new*V_R + K_null * (I_8 - pinv_jacob_right_new*jacob_right_new) * (-lambda_dot_jntlmt_r);
+    delta_q.rows(8,15)= K_inv* pinv_jacob_left_new *V_L + K_null * (I_8 - pinv_jacob_left_new*jacob_left_new) * (-lambda_dot_jntlmt_l);
 
 }
 
@@ -723,7 +704,6 @@ void ManipulationVars::rotating(u_int64_t dt_ns){
 
     //relative motion
     delta_q = K_inv * pinv_Js_1 * V_R + K_inv * pinv_Jhat_2 * (dXd_D + K_clik * (Xd_D-X_D) - Js_2 * pinv_Js_1 * V_R);// + K_null * (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
-
     //rest:::testing
     //delta_q = K_inv * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)) + K_inv * pinv_Jhat_2 * (V_R - Js_2 * pinv_Js_1 * (dXd_D + K_clik * (Xd_D-X_D)));// + (I_16-pinv_Js_1*Js_1)*(I_16-pinv_Jhat_2*Jhat_2)*(-lambda_dot_jntlmt);
 

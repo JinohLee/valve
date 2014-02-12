@@ -49,9 +49,6 @@ void ValveModule::controlLaw() {
     mVars.q_l.subvec(4,6) = mVars.qf_l.subvec(4,6);     //LPF activated
     mVars.q_l.subvec(12,14) = mVars.qf_l.subvec(12,14);
 
-    mVars.q_l_resized.rows(0,6) = mVars.q_l.rows(0,6);
-    mVars.q_l_resized.rows(7,13) = mVars.q_l.rows(8,14);
-
     mVars.manip_kine(); //Calculate kinematics
 
     //Grasping/Openning requirements
@@ -61,6 +58,20 @@ void ValveModule::controlLaw() {
 
     if (count_loop_1==500)
     {
+
+        //std::cout<<"fkin:"<< mVars.fkin_po_right(0)<<"  "<<mVars.fkin_po_left(0)<<std::endl;
+        //std::cout<<"xd  :"<< mVars.Xd_R(0)<<"  "<<mVars.Xd_L(0)<<std::endl;
+
+        //cout<<"R"<<180*(mVars.q_l.rows(0,7).t())/M_PI<<endl;
+        //cout<<"L"<<180*(mVars.q_l.rows(8,15).t())/M_PI<<endl;
+
+        //(mVars.Xd_R.rows(0,2)-mVars.fkin_po_right).print("R");
+       //(mVars.Xd_L.rows(0,2)-mVars.fkin_po_left).print("L");
+
+        (mVars.Eo_r).print("R");
+        (mVars.Eo_l).print("L");
+
+
         /*(Eo_r.t()).print("Eo_r=");
         (Eo_l.t()).print("Eo_l=");
         cout<<endl;*/
